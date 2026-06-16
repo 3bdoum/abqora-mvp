@@ -105,7 +105,7 @@ export default function Dashboard() {
 
     return (
     <Layout>
-        <section className="page shell rtl">
+        <section className="page shell rtl dashboard-page">
 
             <div className="dashboard-layout">
 

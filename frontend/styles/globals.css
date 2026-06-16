@@ -646,16 +646,21 @@ input:focus, select:focus, textarea:focus {
    DASHBOARD STICKY VIDEO SIDEBAR
    ========================================== */
 
+.dashboard-page {
+    max-width: min(1760px, calc(100vw - 96px));
+}
+
 .dashboard-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(430px, 560px);
-    align-items: flex-start;
-    gap: 28px;
+    grid-template-columns: minmax(560px, 1.15fr) minmax(620px, 0.9fr);
+    align-items: stretch;
+    gap: 24px;
 }
 
 .dashboard-content {
     min-width: 0;
     padding-right: 0;
+    width: 100%;
 }
 
 /* Sticky video sidebar */
@@ -663,6 +668,7 @@ input:focus, select:focus, textarea:focus {
     position: sticky;
     top: 100px;
     width: 100%;
+    align-self: start;
     z-index: 2;
 }
 
@@ -673,25 +679,36 @@ input:focus, select:focus, textarea:focus {
     overflow: hidden;
     border: 1px solid var(--border);
     box-shadow: var(--shadow-lg);
+    min-height: clamp(520px, 48vw, 640px);
+    display: flex;
 }
 
 .video-card video {
     width: 100%;
-    aspect-ratio: 16 / 9;
+    height: 100%;
+    min-height: inherit;
     display: block;
     object-fit: cover;
     border-radius: 20px;
 }
 
 /* Responsive */
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
     .dashboard-layout {
-        grid-template-columns: minmax(0, 1fr) minmax(380px, 500px);
+        grid-template-columns: minmax(480px, 1.1fr) minmax(500px, 0.9fr);
         gap: 24px;
+    }
+
+    .video-card {
+        min-height: clamp(460px, 44vw, 580px);
     }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
+    .dashboard-page {
+        max-width: 1100px;
+    }
+
     .dashboard-layout {
         display: block;
     }
@@ -700,6 +717,16 @@ input:focus, select:focus, textarea:focus {
         position: static;
         width: 100%;
         margin-top: 24px;
+    }
+
+    .video-card {
+        min-height: auto;
+    }
+
+    .video-card video {
+        height: auto;
+        min-height: 0;
+        aspect-ratio: 16 / 9;
     }
 
     .dashboard-content {
