@@ -22,7 +22,7 @@ jobs:
       run:
         working-directory: frontend
     env:
-      NEXT_PUBLIC_API_BASE_URL: https://abqora-api.onrender.com/api
+      NEXT_PUBLIC_API_BASE_URL: https://abqora-mvp.onrender.com/api
       NEXT_PUBLIC_BASE_PATH: /abqora-mvp
     steps:
       - name: Checkout
