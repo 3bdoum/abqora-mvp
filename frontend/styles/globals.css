@@ -647,24 +647,23 @@ input:focus, select:focus, textarea:focus {
    ========================================== */
 
 .dashboard-layout {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
     align-items: flex-start;
-    gap: 24px;
+    gap: 32px;
 }
 
 .dashboard-content {
-    flex: 1;
     min-width: 0;
-    padding-right: 340px;
+    padding-right: 0;
 }
 
-/* Fixed video on right side */
+/* Sticky video sidebar */
 .dashboard-video {
-    position: fixed;
+    position: sticky;
     top: 100px;
-    right: 100px;
-    width: 500px;
-    z-index: 999;
+    width: 100%;
+    z-index: 2;
 }
 
 /* Video card */
@@ -678,19 +677,17 @@ input:focus, select:focus, textarea:focus {
 
 .video-card video {
     width: 100%;
+    aspect-ratio: 16 / 9;
     display: block;
+    object-fit: cover;
     border-radius: 20px;
 }
 
 /* Responsive */
 @media (max-width: 1200px) {
-    .dashboard-video {
-        width: 240px;
-        right: 15px;
-    }
-
-    .dashboard-content {
-        padding-right: 270px;
+    .dashboard-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+        gap: 24px;
     }
 }
 
@@ -700,7 +697,9 @@ input:focus, select:focus, textarea:focus {
     }
 
     .dashboard-video {
-        display: none;
+        position: static;
+        width: 100%;
+        margin-top: 24px;
     }
 
     .dashboard-content {
