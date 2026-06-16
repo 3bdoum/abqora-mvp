@@ -6,10 +6,10 @@ export default function SideVideo() {
             <div className="video-card">
                 <video
                     src={withBasePath('/videos/abqora-intro.mp4')}
-                    autoPlay
-                    muted
+                    controls
                     loop
                     playsInline
+                    preload="metadata"
                 />
             </div>
         </div>
