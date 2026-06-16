@@ -1,9 +1,10 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
+const { getJwtSecret } = require('../config/auth');
 
 const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET || 'secret123', {
+    return jwt.sign({ id }, getJwtSecret(), {
         expiresIn: '30d',
     });
 };
@@ -15,7 +16,13 @@ const registerUser = async (req, res) => {
             return res.status(400).json({ message: 'كل الحقول مطلوبة' });
         }
 
-        const existingUser = await User.findOne({ email });
+        const normalizedEmail = email.trim().toLowerCase();
+        const publicRole = role || 'student';
+        if (!['student', 'parent'].includes(publicRole)) {
+            return res.status(400).json({ message: 'نوع الحساب غير صالح للتسجيل العام' });
+        }
+
+        const existingUser = await User.findOne({ email: normalizedEmail });
         if (existingUser) {
             return res.status(400).json({ message: 'البريد الإلكتروني مستخدم بالفعل' });
         }
@@ -23,10 +30,10 @@ const registerUser = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await User.create({
             name,
-            email,
+            email: normalizedEmail,
             password: hashedPassword,
-            role: role || 'student',
-            ageGroup: ageGroup || 'none',
+            role: publicRole,
+            ageGroup: publicRole === 'student' ? (ageGroup || 'none') : 'none',
         });
 
         res.status(201).json({
@@ -45,7 +52,7 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: email.trim().toLowerCase() });
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ message: 'بيانات تسجيل الدخول غير صحيحة' });
         }
@@ -70,6 +77,10 @@ const currentUser = async (req, res) => {
 
 const linkStudent = async (req, res) => {
     try {
+        if (req.user.role !== 'parent') {
+            return res.status(403).json({ message: 'هذا الإجراء متاح لحسابات أولياء الأمور فقط' });
+        }
+
         const { email } = req.body;
         if (!email) {
             return res.status(400).json({ message: 'البريد الإلكتروني للطالب مطلوب' });
@@ -82,7 +93,7 @@ const linkStudent = async (req, res) => {
 
         // Check if student is already linked to this parent
         const parent = await User.findById(req.user.id);
-        if (parent.children.includes(student._id)) {
+        if (parent.children.some((childId) => childId.toString() === student._id.toString())) {
             return res.status(400).json({ message: 'هذا الطالب مضاف بالفعل' });
         }
 

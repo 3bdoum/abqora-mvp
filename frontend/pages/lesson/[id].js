@@ -127,7 +127,7 @@ export default function LessonPage() {
             <section className="page shell rtl">
                 {lesson ? (
                     <>
-                        <Link href={`/course/${lesson.course}`} className="button secondary" style={{ marginBottom: '20px', textDecoration: 'none', display: 'inline-flex' }}>
+                        <Link href={{ pathname: '/course', query: { id: lesson.course } }} className="button secondary" style={{ marginBottom: '20px', textDecoration: 'none', display: 'inline-flex' }}>
                             ↩ العودة لقائمة الدروس
                         </Link>
 
@@ -271,7 +271,7 @@ export default function LessonPage() {
                                 )}
 
                                 <button
-                                    onClick={() => router.push(`/quiz/${lesson._id}`)}
+                                    onClick={() => router.push({ pathname: '/quiz', query: { id: lesson._id } })}
                                     className={`button ${completed ? 'btn-primary' : 'btn-secondary'}`}
                                 >
                                     دخول اختبار الدرس ✍️

@@ -8,7 +8,7 @@ export default function CourseCard({ course }) {
                 <p>{course.description}</p>
                 <span className="tag">{course.language}</span>
             </div>
-            <Link href={`/course/${course._id}`} className="button small">عرض الدورة</Link>
+            <Link href={{ pathname: '/course', query: { id: course._id } }} className="button small">عرض الدورة</Link>
         </div>
     );
 }

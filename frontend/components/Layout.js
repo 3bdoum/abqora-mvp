@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Image from "next/image";
+import { withBasePath } from '../utils/paths';
 
 export default function Layout({ children }) {
     const [user, setUser] = useState(null);
@@ -16,7 +17,7 @@ export default function Layout({ children }) {
 
     const logout = () => {
         localStorage.clear();
-        window.location.href = '/login';
+        window.location.href = withBasePath('/login');
     };
 
     const getRoleLabel = (role) => {
@@ -33,7 +34,7 @@ export default function Layout({ children }) {
                 <div>
                     <Link href="/dashboard" className="topbar-logo flex items-center gap-2">
                         <Image
-                            src="/images/avatar.png"
+                            src={withBasePath('/images/avatar.png')}
                             alt="Abqora Avatar"
                             width={60}
                             height={60}

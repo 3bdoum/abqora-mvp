@@ -78,7 +78,7 @@ export default function CoursePage() {
                                                 {lesson.content.slice(0, 150)}...
                                             </p>
                                             <div style={{ marginTop: '12px' }}>
-                                                <Link href={`/lesson/${lesson._id}`} className="button small-button">
+                                                <Link href={{ pathname: '/lesson', query: { id: lesson._id } }} className="button small-button">
                                                     {completed ? 'مراجعة الدرس 📖' : 'ابدأ الدرس الآن 🚀'}
                                                 </Link>
                                             </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import API from '../utils/api';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
@@ -34,7 +34,7 @@ export default function Register() {
         const finalAgeGroup = role === 'student' ? ageGroup : 'none';
 
         try {
-            const { data } = await axios.post('http://localhost:5000/api/auth/register', {
+            const { data } = await API.post('/auth/register', {
                 name,
                 email,
                 password,
@@ -97,7 +97,6 @@ export default function Register() {
                     <select value={role} onChange={(e) => setRole(e.target.value)} style={{ marginBottom: '20px' }}>
                         <option value="student">طالب (أتعلم البرمجة) 🎒</option>
                         <option value="parent">ولي أمر (أتابع أطفالي) 👨‍👩‍👦</option>
-                        <option value="admin">معلم / إداري (أدير المحتوى) 🎓</option>
                     </select>
 
                     {role === 'student' && (

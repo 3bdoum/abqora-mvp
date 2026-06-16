@@ -4,6 +4,17 @@ const Quiz = require('../models/quizModel');
 const Certificate = require('../models/certificateModel');
 const User = require('../models/userModel');
 
+const getCertificateUrl = (certificateId) => {
+    const certificatePath = `/certificate?id=${encodeURIComponent(certificateId)}`;
+    const frontendUrl = process.env.FRONTEND_URL;
+
+    if (!frontendUrl) {
+        return certificatePath;
+    }
+
+    return `${frontendUrl.replace(/\/$/, '')}${certificatePath}`;
+};
+
 const getProgressByCourse = async (req, res) => {
     try {
         const progress = await Progress.findOne({ user: req.user.id, course: req.params.courseId })
@@ -30,41 +41,7 @@ const updateLessonProgress = async (req, res) => {
 };
 
 const updateQuizProgress = async (req, res) => {
-    try {
-        const { courseId, quizId, score, total } = req.body;
-        
-        let progress = await Progress.findOne({ user: req.user.id, course: courseId });
-        if (!progress) {
-            progress = new Progress({
-                user: req.user.id,
-                course: courseId,
-                completedLessons: [],
-                quizResults: []
-            });
-        }
-
-        const existingResultIndex = progress.quizResults.findIndex(
-            (r) => r.quiz && r.quiz.toString() === quizId
-        );
-
-        const quizResultObj = {
-            quiz: quizId,
-            score,
-            total,
-            completedAt: new Date()
-        };
-
-        if (existingResultIndex > -1) {
-            progress.quizResults[existingResultIndex] = quizResultObj;
-        } else {
-            progress.quizResults.push(quizResultObj);
-        }
-
-        await progress.save();
-        res.json(progress);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(410).json({ message: 'يرجى استخدام مسار تسليم الاختبار لتسجيل الدرجة بشكل آمن' });
 };
 
 const completeCourse = async (req, res) => {
@@ -89,7 +66,8 @@ const getStudentProgress = async (req, res) => {
         // Parent validation
         if (req.user.role === 'parent') {
             const parent = await User.findById(req.user.id);
-            if (!parent.children.includes(studentId)) {
+            const hasLinkedStudent = parent.children.some((childId) => childId.toString() === studentId);
+            if (!hasLinkedStudent) {
                 return res.status(403).json({ message: 'غير مصرح للوصول لبيانات هذا الطالب' });
             }
         } else if (req.user.role !== 'admin' && req.user.id !== studentId) {
@@ -176,7 +154,7 @@ const checkOrCreateCertificate = async (req, res) => {
             });
 
             // Save certificateUrl to progress
-            progress.certificateUrl = `/certificate/${certificate.certificateId}`;
+            progress.certificateUrl = getCertificateUrl(certificate.certificateId);
             await progress.save();
         }
 

@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
+
 const API = axios.create({
-    baseURL: 'http://localhost:5008/api',
+    baseURL: API_BASE_URL.replace(/\/$/, ''),
 });
 
 // Automatically inject JWT token into requests

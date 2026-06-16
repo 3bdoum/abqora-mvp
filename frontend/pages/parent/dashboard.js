@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import API from '../../utils/api';
+import { withBasePath } from '../../utils/paths';
 
 export default function ParentDashboard() {
     const router = useRouter();
@@ -210,7 +211,7 @@ export default function ParentDashboard() {
                                                     {childProgress && childProgress.certificateUrl && (
                                                         <div className="success-box" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '14px' }}>
                                                             <span>🏆 حصل {selectedChild.name} على شهادة إتمام الدورة!</span>
-                                                            <a href={childProgress.certificateUrl} target="_blank" rel="noopener noreferrer" className="button btn-success small-button" style={{ textDecoration: 'none' }}>
+                                                            <a href={withBasePath(childProgress.certificateUrl)} target="_blank" rel="noopener noreferrer" className="button btn-success small-button" style={{ textDecoration: 'none' }}>
                                                                 عرض الشهادة المعتمدة 🎓
                                                             </a>
                                                         </div>

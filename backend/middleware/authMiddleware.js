@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
+const { getJwtSecret } = require('../config/auth');
 
 const protect = async (req, res, next) => {
     let token = null;
@@ -12,8 +13,11 @@ const protect = async (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
+        const decoded = jwt.verify(token, getJwtSecret());
         req.user = await User.findById(decoded.id).select('-password');
+        if (!req.user) {
+            return res.status(401).json({ message: 'المستخدم غير موجود' });
+        }
         next();
     } catch (error) {
         res.status(401).json({ message: 'رمز غير صالح' });

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import axios from 'axios';
 import Layout from '../components/Layout';
 import CourseCard from '../components/CourseCard';
 import API from '../utils/api';
 import SideVideo from "../components/SideVideo";
+import { withBasePath } from '../utils/paths';
 
 export default function Dashboard() {
     const router = useRouter();
@@ -182,7 +182,7 @@ export default function Dashboard() {
                                                     </p>
 
                                                     <a
-                                                        href={studentProgress.certificateUrl}
+                                                        href={withBasePath(studentProgress.certificateUrl)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="button btn-success"

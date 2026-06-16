@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import axios from 'axios';
 import Head from 'next/head';
+import API from '../../utils/api';
 
 export default function PublicCertificatePage() {
     const router = useRouter();
@@ -12,7 +12,7 @@ export default function PublicCertificatePage() {
     useEffect(() => {
         if (!id) return;
 
-        axios.get(`http://localhost:5001/api/certificates/${id}`)
+        API.get(`/certificates/${id}`)
             .then((res) => {
                 setCert(res.data);
             })

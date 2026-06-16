@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+require('dotenv').config();
 const connectDB = require('../config/db');
 const User = require('../models/userModel');
 const Course = require('../models/courseModel');
@@ -11,6 +12,11 @@ const Submission = require('../models/submissionModel');
 
 const run = async () => {
     try {
+        if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PRODUCTION_SEED !== 'true') {
+            console.error('Refusing to seed in production without ALLOW_PRODUCTION_SEED=true.');
+            process.exit(1);
+        }
+
         await connectDB();
 
         // Clear collections

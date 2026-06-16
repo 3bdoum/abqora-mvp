@@ -1,9 +1,11 @@
+import { withBasePath } from '../utils/paths';
+
 export default function SideVideo() {
     return (
         <div className="dashboard-video">
             <div className="video-card">
                 <video
-                    src="/videos/abqora-intro.mp4"
+                    src={withBasePath('/videos/abqora-intro.mp4')}
                     autoPlay
                     muted
                     loop
