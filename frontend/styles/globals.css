@@ -643,14 +643,14 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ==========================================
-   DASHBOARD FIXED VIDEO SIDEBAR
+   DASHBOARD STICKY VIDEO SIDEBAR
    ========================================== */
 
 .dashboard-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+    grid-template-columns: minmax(0, 1fr) minmax(430px, 560px);
     align-items: flex-start;
-    gap: 32px;
+    gap: 28px;
 }
 
 .dashboard-content {
@@ -686,12 +686,12 @@ input:focus, select:focus, textarea:focus {
 /* Responsive */
 @media (max-width: 1200px) {
     .dashboard-layout {
-        grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+        grid-template-columns: minmax(0, 1fr) minmax(380px, 500px);
         gap: 24px;
     }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
     .dashboard-layout {
         display: block;
     }
