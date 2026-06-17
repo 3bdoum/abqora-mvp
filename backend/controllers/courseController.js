@@ -1,13 +1,18 @@
 const Course = require('../models/courseModel');
-const Lesson = require('../models/lessonModel');
 
 const getCourses = async (req, res) => {
-    const courses = await Course.find().populate('lessons');
+    const courses = await Course.find().populate({
+        path: 'lessons',
+        options: { sort: { order: 1 } }
+    });
     res.json(courses);
 };
 
 const getCourseById = async (req, res) => {
-    const course = await Course.findById(req.params.id).populate('lessons');
+    const course = await Course.findById(req.params.id).populate({
+        path: 'lessons',
+        options: { sort: { order: 1 } }
+    });
     if (!course) {
         return res.status(404).json({ message: 'الدورة غير موجودة' });
     }

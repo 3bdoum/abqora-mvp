@@ -7,7 +7,8 @@
         "dev": "nodemon server.js",
         "dev:backend": "nodemon server.js",
         "start": "node server.js",
-        "seed": "node utils/seed.js"
+        "seed": "node utils/seed.js",
+        "sync:pre-express": "node utils/syncPreExpressLessons.js"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",

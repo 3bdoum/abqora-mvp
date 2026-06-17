@@ -22,7 +22,23 @@ const getEmbedUrl = (url) => {
             return `https://www.youtube.com/embed/${watchMatch[1]}`;
         }
 
+        const shortsMatch = url.match(/youtube\.com\/shorts\/([^?&/]+)/);
+        if (shortsMatch) {
+            return `https://www.youtube.com/embed/${shortsMatch[1]}`;
+        }
+
         return '';
+    } catch {
+        return '';
+    }
+};
+
+const getExternalVideoUrl = (url) => {
+    if (!url) return '';
+
+    try {
+        const parsed = new URL(url);
+        return ['http:', 'https:'].includes(parsed.protocol) ? url : '';
     } catch {
         return '';
     }
@@ -122,6 +138,10 @@ export default function LessonPage() {
         }
     };
 
+    const videoUrl = lesson?.videoUrl?.trim() || '';
+    const embedUrl = getEmbedUrl(videoUrl);
+    const externalVideoUrl = getExternalVideoUrl(videoUrl);
+
     return (
         <Layout>
             <section className="page shell rtl">
@@ -137,7 +157,7 @@ export default function LessonPage() {
                         </div>
 
                         {/* YouTube Tutorial Video */}
-                        {lesson.videoUrl && (
+                        {videoUrl && (
                             <div
                                 className="card"
                                 style={{
@@ -148,39 +168,56 @@ export default function LessonPage() {
                                     الشرح المرئي باللغة العربية 📺
                                 </h2>
 
-                                {getEmbedUrl(lesson.videoUrl) ? (
-                                    <div
-                                        style={{
-                                            position: 'relative',
-                                            width: '100%',
-                                            paddingBottom: '56.25%',
-                                            height: 0,
-                                            overflow: 'hidden',
-                                            borderRadius: '12px',
-                                            background: '#000'
-                                        }}
-                                    >
-                                        <iframe
-                                            src={getEmbedUrl(lesson.videoUrl)}
-                                            title={lesson.title}
-                                            loading="lazy"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            allowFullScreen
-                                            referrerPolicy="strict-origin-when-cross-origin"
+                                {embedUrl ? (
+                                    <>
+                                        <div
                                             style={{
-                                                position: 'absolute',
-                                                top: 0,
-                                                left: 0,
+                                                position: 'relative',
                                                 width: '100%',
-                                                height: '100%',
-                                                border: 'none',
-                                                borderRadius: '12px'
+                                                paddingBottom: '56.25%',
+                                                height: 0,
+                                                overflow: 'hidden',
+                                                borderRadius: '12px',
+                                                background: '#000'
                                             }}
-                                        />
-                                    </div>
+                                        >
+                                            <iframe
+                                                src={embedUrl}
+                                                title={lesson.title}
+                                                loading="lazy"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowFullScreen
+                                                referrerPolicy="strict-origin-when-cross-origin"
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: 0,
+                                                    left: 0,
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    border: 'none',
+                                                    borderRadius: '12px'
+                                                }}
+                                            />
+                                        </div>
+                                        {externalVideoUrl && (
+                                            <p style={{ marginTop: '12px', textAlign: 'center' }}>
+                                                إذا لم يعمل الفيديو داخل الصفحة،{' '}
+                                                <a href={externalVideoUrl} target="_blank" rel="noopener noreferrer">
+                                                    افتحه في نافذة جديدة
+                                                </a>
+                                            </p>
+                                        )}
+                                    </>
                                 ) : (
                                     <div className="error-box">
-                                        رابط الفيديو غير صالح أو لا يمكن عرضه.
+                                        رابط الفيديو غير صالح أو لا يمكن عرضه داخل الصفحة.
+                                        {externalVideoUrl && (
+                                            <p style={{ marginTop: '8px' }}>
+                                                <a href={externalVideoUrl} target="_blank" rel="noopener noreferrer">
+                                                    فتح الرابط في نافذة جديدة
+                                                </a>
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             </div>
