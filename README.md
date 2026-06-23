@@ -115,9 +115,24 @@ After deploying backend code, run `npm run migrate:courses` once from the Render
 Abqora currently includes two student-facing courses:
 
 - `CS Fundamentals: Pre-reader Express` — the existing 11-lesson course. The migration updates the course metadata and adds stable lesson identifiers without replacing lesson documents or deleting `Progress.completedLessons`.
-- `CS Fundamentals: Express Course` — 31 lesson records. Lessons 1–3 now contain original Abqora Blockly activities that run entirely inside the lesson page; lessons 4–31 remain visible in sequence as placeholders, but they do not expose direct Code.org student links until original Abqora activities are authored.
+- `CS Fundamentals: Express Course` — 31 lesson records. Each lesson follows the same student flow: watch one or more Abqora explanation videos first, open the public Code.org student activity for practice, then return to Abqora and submit the lesson for teacher review.
 
-The exact, permitted 31-lesson metadata was not available in this repository or the supplied public page. Lessons 4–31 are deliberately labelled in the UI and database as placeholders (`isPlaceholder: true`) with titles such as `الدرس 4 — العنوان الرسمي مطلوب`. Replace them only when verified metadata is supplied; do not scrape Code.org or copy protected curriculum text.
+The exact, permitted 31-lesson titles and explanation video links were not available in this repository. The Express course therefore uses stable lesson identifiers and generic Abqora-authored titles for lessons whose official metadata has not been supplied yet. Replace those titles and add lesson videos only from verified material that Abqora is allowed to use; do not scrape Code.org or copy protected curriculum text.
+
+Lesson records support both the legacy single `videoUrl` field and a newer `videoUrls` array for one or more explanation videos:
+
+```js
+videoUrls: [
+  {
+    title: 'شرح التمرين',
+    url: 'https://www.youtube.com/watch?v=...',
+    description: 'اختياري',
+    duration: 'اختياري'
+  }
+]
+```
+
+Only HTTPS YouTube links are accepted for explanation videos from the admin lesson-creation API.
 
 `Progress` remains the student-course enrollment record so existing progress is not split into a duplicate concept. It now contains per-lesson status and manual access overrides alongside the legacy `completedLessons` array. Existing completed lesson IDs are backfilled to the richer structure and remain intact.
 
@@ -135,15 +150,15 @@ Lesson access is enforced by the Express API:
 
 As of June 23, 2026, Code.org's official support material documents its own teacher progress dashboard and manual CSV downloads, plus SSO/roster integrations for providers such as Clever, Google Classroom, Canvas, and Schoology. The official Canvas documentation explicitly says Code.org grade sync to Canvas is not available. No documented public API was found that permits Abqora to read a student's Code.org course completion automatically.
 
-Code.org's official Canvas integration documentation also says iframe placements are unsupported, so Code.org pages are not embedded or proxied inside Abqora. Abqora uses this safe native flow:
+Code.org's official Canvas integration documentation also says iframe placements are unsupported, so Code.org pages are not embedded or proxied inside Abqora. Abqora uses this safe review flow:
 
-1. For an Abqora-native activity, the student arranges Blockly commands and runs the activity inside the lesson page.
-2. The Express API independently simulates the submitted commands; the generic completion endpoint cannot bypass this validation.
-3. A verified solution becomes **بانتظار موافقة المعلم**.
+1. The student watches the Abqora explanation video or videos on the lesson page.
+2. The student opens the public Code.org student practice link in a new tab.
+3. The student returns to Abqora and selects **انتهيت من التطبيق — إرسال للمراجعة**.
 4. An assigned teacher or admin approves or rejects the request.
 5. Approval completes the lesson and unlocks the next one.
 
-Lessons that are still placeholders cannot be completed and do not launch Code.org directly from the student experience. To make the rest of the Express course usable inside Abqora, author original native activities and replace each placeholder with verified lesson metadata.
+Locked lessons hide explanation video URLs and Code.org links in the API response. The backend still enforces lesson order, so changing a URL or sending a direct completion API request cannot bypass prerequisites.
 
 Abqora does not scrape Code.org, request instructor-only URLs, impersonate a Code.org user, or claim automatic Code.org progress synchronization. Reference material:
 
@@ -151,9 +166,15 @@ Abqora does not scrape Code.org, request instructor-only URLs, impersonate a Cod
 - https://support.code.org/hc/en-us/articles/14961588931597-How-do-I-print-my-student-s-progress-reports
 - https://support.code.org/hc/en-us/articles/23123273783437-Install-the-Code-org-Integration-for-Canvas
 
-## Native activity authoring
+## Explanation video authoring
 
-Lessons `express-2025-l01` through `express-2025-l03` use the first reusable `sequence_maze` activity type. Each lesson stores its public grid, start, goal, walkable cells, lesson-specific instructions, and block limit on the existing `Lesson.nativeActivity` field. The browser animates the commands for immediate feedback, while `POST /api/progress/native-activity` performs the authoritative validation before creating the audited completion request. Never treat the browser simulation as proof of completion.
+For every lesson in both courses, add at least one Abqora-owned or properly licensed explanation video before asking students to practice on Code.org. A lesson can have multiple videos when the exercise needs smaller steps, for example:
+
+- a short concept introduction;
+- a walkthrough of the Code.org puzzle goal;
+- a reminder video for common mistakes.
+
+The lesson page will show all videos in order before the Code.org practice card. If no videos are configured yet, the student sees a clear placeholder message instead of a broken player.
 
 ## Roles and sample accounts
 

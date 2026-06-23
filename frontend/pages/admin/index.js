@@ -75,19 +75,20 @@ export default function AdminDashboard() {
         e.preventDefault();
         if (!selectedCourseId || !newLessonTitle || !newLessonContent) return;
         try {
-            // Wait, we need a post route for creating lessons in backend!
-            // Let's check: in courseController.js there is only getCourses, getCourseById, createCourse.
-            // Let's look: is there a lesson creation endpoint?
-            // In backend routes/lessonRoutes.js we only see getLessonsByCourse, getLessonById.
-            // Oh! No lesson creation backend endpoint!
-            // We should add it or handle it cleanly.
-            // Let's first look: since this is an MVP, we can add a route to create lessons in lessonRoutes.js and lessonController.js!
-            // Let's implement that to make the Course Builder work.
-            // But let's build this frontend form first.
+            const videoUrls = newLessonVideo
+                .split('\n')
+                .map((url) => url.trim())
+                .filter(Boolean)
+                .map((url, index) => ({
+                    title: `شرح الدرس ${index + 1}`,
+                    url,
+                }));
+
             await API.post('/lessons', {
                 title: newLessonTitle,
                 content: newLessonContent,
-                videoUrl: newLessonVideo,
+                videoUrl: videoUrls[0]?.url || '',
+                videoUrls,
                 codeOrgLink: newLessonCodeLink,
                 course: selectedCourseId,
                 order: parseInt(newLessonOrder)
@@ -287,11 +288,12 @@ export default function AdminDashboard() {
                                     required 
                                 />
 
-                                <label>رابط فيديو الشرح العربي (YouTube embed URL)</label>
-                                <input 
+                                <label>روابط فيديوهات الشرح العربي (YouTube)</label>
+                                <textarea
                                     value={newLessonVideo} 
                                     onChange={(e) => setNewLessonVideo(e.target.value)} 
-                                    placeholder="https://www.youtube.com/embed/..." 
+                                    placeholder={'ضع كل رابط في سطر مستقل:\nhttps://www.youtube.com/watch?v=...\nhttps://youtu.be/...'}
+                                    rows="3"
                                 />
 
                                 <label>رابط النشاط العملي (Code.org Link)</label>

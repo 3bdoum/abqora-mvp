@@ -20,66 +20,8 @@ const Quiz = require('../models/quizModel');
 const Submission = require('../models/submissionModel');
 const Certificate = require('../models/certificateModel');
 const { backfillLegacyProgress, seedData } = require('../utils/seed');
-const { expressLessons } = require('../data/expressCourse');
-const { validateNativeActivity } = require('../utils/nativeActivity');
 
 let mongo;
-
-const nativeActivity = {
-    enabled: true,
-    kind: 'sequence_maze',
-    version: 1,
-    config: {
-        rows: 5,
-        columns: 5,
-        start: { row: 4, column: 0, direction: 'east' },
-        goal: { row: 2, column: 4 },
-        validCells: [
-            { row: 4, column: 0 }, { row: 4, column: 1 }, { row: 4, column: 2 },
-            { row: 3, column: 2 }, { row: 2, column: 2 }, { row: 2, column: 3 },
-            { row: 2, column: 4 },
-        ],
-        maxBlocks: 12,
-    },
-};
-
-const nativeActivityTwo = {
-    enabled: true,
-    kind: 'sequence_maze',
-    version: 1,
-    config: {
-        rows: 6,
-        columns: 6,
-        start: { row: 5, column: 0, direction: 'east' },
-        goal: { row: 1, column: 5 },
-        validCells: [
-            { row: 5, column: 0 }, { row: 5, column: 1 }, { row: 4, column: 1 },
-            { row: 3, column: 1 }, { row: 3, column: 2 }, { row: 3, column: 3 },
-            { row: 2, column: 3 }, { row: 1, column: 3 }, { row: 1, column: 4 },
-            { row: 1, column: 5 },
-        ],
-        maxBlocks: 16,
-    },
-};
-
-const solvedCommands = [
-    'move_forward', 'move_forward', 'turn_left', 'move_forward',
-    'move_forward', 'turn_right', 'move_forward', 'move_forward',
-];
-
-const solvedCommandsTwo = [
-    'move_forward', 'turn_left', 'move_forward', 'move_forward',
-    'turn_right', 'move_forward', 'move_forward', 'turn_left',
-    'move_forward', 'move_forward', 'turn_right', 'move_forward',
-    'move_forward',
-];
-
-const solvedCommandsThree = [
-    'move_forward', 'move_forward', 'turn_right', 'move_forward',
-    'turn_left', 'move_forward', 'turn_right', 'move_forward',
-    'move_forward', 'turn_left', 'move_forward', 'move_forward',
-    'turn_right', 'move_forward', 'move_forward',
-];
 
 const tokenFor = (user) => jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 const auth = (token) => ({ Authorization: `Bearer ${token}` });
@@ -120,7 +62,7 @@ const setupScenario = async () => {
             order,
             requiresApproval: true,
             codeOrgLink: `https://studio.code.org/courses/express-2025/units/1/lessons/${order}/levels/1`,
-            nativeActivity: order === 1 ? nativeActivity : order === 2 ? nativeActivityTwo : undefined,
+            videoUrls: [],
         }));
     }
     course.lessons = lessons.map((lesson) => lesson._id);
@@ -162,14 +104,15 @@ test('student cannot access a locked lesson', async () => {
         .set(auth(data.tokens.student));
     assert.equal(course.body.lessons[1].studentState, 'locked');
     assert.equal(course.body.lessons[1].codeOrgLink, '');
+    assert.deepEqual(course.body.lessons[1].videoUrls, []);
 });
 
 test('approval completes one lesson and unlocks only the correct next lesson', async () => {
     const data = await setupScenario();
     const submitted = await request(app)
-        .post('/api/progress/native-activity')
+        .post('/api/progress/lesson')
         .set(auth(data.tokens.student))
-        .send({ lessonId: data.lessons[0]._id, commands: solvedCommands });
+        .send({ courseId: data.course._id, lessonId: data.lessons[0]._id });
     assert.equal(submitted.status, 200);
     assert.equal(submitted.body.studentState, 'awaiting_approval');
 
@@ -187,41 +130,19 @@ test('approval completes one lesson and unlocks only the correct next lesson', a
     ]);
 });
 
-test('native activity requires a server-verified solution', async () => {
-    const data = await setupScenario();
-
-    const manualBypass = await request(app)
-        .post('/api/progress/lesson')
-        .set(auth(data.tokens.student))
-        .send({ courseId: data.course._id, lessonId: data.lessons[0]._id });
-    assert.equal(manualBypass.status, 400);
-
-    const wrongSolution = await request(app)
-        .post('/api/progress/native-activity')
-        .set(auth(data.tokens.student))
-        .send({ lessonId: data.lessons[0]._id, commands: ['move_forward'] });
-    assert.equal(wrongSolution.status, 400);
-
-    const progress = await Progress.findOne({ user: data.student._id, course: data.course._id });
-    const entry = progress.lessonProgress.find(
-        (item) => String(item.lesson) === String(data.lessons[0]._id)
-    );
-    assert.equal(entry, undefined);
-});
-
-test('second native activity unlocks only after the first approved lesson', async () => {
+test('second Code.org practice lesson unlocks only after the first approved lesson', async () => {
     const data = await setupScenario();
 
     const lockedAttempt = await request(app)
-        .post('/api/progress/native-activity')
+        .post('/api/progress/lesson')
         .set(auth(data.tokens.student))
-        .send({ lessonId: data.lessons[1]._id, commands: solvedCommandsTwo });
+        .send({ courseId: data.course._id, lessonId: data.lessons[1]._id });
     assert.equal(lockedAttempt.status, 403);
 
     await request(app)
-        .post('/api/progress/native-activity')
+        .post('/api/progress/lesson')
         .set(auth(data.tokens.student))
-        .send({ lessonId: data.lessons[0]._id, commands: solvedCommands });
+        .send({ courseId: data.course._id, lessonId: data.lessons[0]._id });
 
     await request(app)
         .patch(`/api/teacher/students/${data.student._id}/lessons/${data.lessons[0]._id}`)
@@ -229,9 +150,9 @@ test('second native activity unlocks only after the first approved lesson', asyn
         .send({ action: 'approve', feedback: 'أحسنت' });
 
     const submitted = await request(app)
-        .post('/api/progress/native-activity')
+        .post('/api/progress/lesson')
         .set(auth(data.tokens.student))
-        .send({ lessonId: data.lessons[1]._id, commands: solvedCommandsTwo });
+        .send({ courseId: data.course._id, lessonId: data.lessons[1]._id });
     assert.equal(submitted.status, 200);
     assert.equal(submitted.body.studentState, 'awaiting_approval');
 
@@ -241,21 +162,6 @@ test('second native activity unlocks only after the first approved lesson', asyn
     assert.deepEqual(course.body.lessons.map((lesson) => lesson.studentState), [
         'completed', 'awaiting_approval', 'locked'
     ]);
-});
-
-test('express native lesson definitions have valid server-side sample solutions', () => {
-    const expectedSolutions = new Map([
-        ['express-2025-l01', solvedCommands],
-        ['express-2025-l02', solvedCommandsTwo],
-        ['express-2025-l03', solvedCommandsThree],
-    ]);
-
-    for (const [stableId, commands] of expectedSolutions) {
-        const lesson = expressLessons.find((item) => item.stableId === stableId);
-        assert.equal(lesson?.nativeActivity?.enabled, true, `${stableId} should be native`);
-        const result = validateNativeActivity(lesson.nativeActivity, commands);
-        assert.equal(result.valid, true, `${stableId} sample solution should be valid`);
-    }
 });
 
 test('student cannot approve their own submission', async () => {
@@ -342,20 +248,15 @@ test('seed scripts are idempotent', async () => {
     assert.deepEqual(second, first);
     assert.deepEqual(second, { users: 4, courses: 2, lessons: 42, assignments: 1, progress: 1 });
 
-    const firstNativeLesson = await Lesson.findOne({ stableId: 'express-2025-l01' });
-    const secondNativeLesson = await Lesson.findOne({ stableId: 'express-2025-l02' });
-    const thirdNativeLesson = await Lesson.findOne({ stableId: 'express-2025-l03' });
-    const firstPlaceholder = await Lesson.findOne({ stableId: 'express-2025-l04' });
-
-    assert.equal(firstNativeLesson.nativeActivity.enabled, true);
-    assert.equal(firstNativeLesson.isPlaceholder, false);
-    assert.equal(firstNativeLesson.codeOrgLink, '');
-    assert.equal(secondNativeLesson.nativeActivity.enabled, true);
-    assert.equal(secondNativeLesson.isPlaceholder, false);
-    assert.equal(secondNativeLesson.codeOrgLink, '');
-    assert.equal(thirdNativeLesson.nativeActivity.enabled, true);
-    assert.equal(thirdNativeLesson.isPlaceholder, false);
-    assert.equal(thirdNativeLesson.codeOrgLink, '');
-    assert.equal(firstPlaceholder.isPlaceholder, true);
-    assert.equal(firstPlaceholder.codeOrgLink, '');
+    const expressCourse = await Course.findOne({ slug: 'cs-fundamentals-express-course' }).populate('lessons');
+    assert.equal(expressCourse.lessons.length, 31);
+    expressCourse.lessons.forEach((lesson, index) => {
+        assert.equal(lesson.isPlaceholder, false);
+        assert.equal(lesson.nativeActivity, undefined);
+        assert.equal(Array.isArray(lesson.videoUrls), true);
+        assert.equal(
+            lesson.codeOrgLink,
+            `https://studio.code.org/courses/express-2025/units/1/lessons/${index + 1}/levels/1`
+        );
+    });
 });

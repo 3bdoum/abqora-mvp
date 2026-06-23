@@ -143,6 +143,7 @@ const preExpressLessons = [
 const normalizedPreExpressLessons = preExpressLessons.map((lesson) => ({
     ...lesson,
     stableId: `pre-express-2025-l${String(lesson.order).padStart(2, '0')}`,
+    videoUrls: lesson.videoUrls || [],
     type: [2, 4, 6].includes(lesson.order) ? 'project' : 'activity',
     requiresApproval: true,
     isPlaceholder: false,
