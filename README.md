@@ -72,7 +72,7 @@ Deployment is handled by `.github/workflows/pages.yml`. In GitHub, open the repo
 The workflow currently points the frontend API client to:
 
 ```text
-https://abqora-api.onrender.com/api
+https://abqora-mvp.onrender.com/api
 ```
 
 If Render gives the backend a different URL, update `NEXT_PUBLIC_API_BASE_URL` in `.github/workflows/pages.yml`.
@@ -98,7 +98,7 @@ CORS_ORIGIN=https://3bdoum.github.io
 FRONTEND_URL=https://3bdoum.github.io/abqora-mvp
 ```
 
-Run the seed script only once for demo data, and never after real users exist. In production it is blocked unless `ALLOW_PRODUCTION_SEED=true` is set intentionally.
+After deploying backend code, run `npm run migrate:courses` once from the Render Shell to update course and lesson records without creating demo users. Run the seed script only for demo/test databases, and never after real users exist. In production it is blocked unless `ALLOW_PRODUCTION_SEED=true` is set intentionally.
 
 ## MVP scope
 
@@ -178,9 +178,9 @@ Back up MongoDB before any production migration. Then run from `backend`:
 npm run migrate:courses
 ```
 
-The migration is idempotent. It upserts the two courses, stable lesson records, sample accounts, and the sample teacher assignment; it does not call `deleteMany` and it preserves existing lesson document IDs and completion arrays wherever the existing 11 lessons can be matched by course and order.
+The migration is idempotent. It upserts the two courses and stable lesson records, then backfills legacy completed lesson progress. It does not create demo users, does not call `deleteMany`, and preserves existing lesson document IDs and completion arrays wherever the existing 11 lessons can be matched by course and order.
 
-For a fresh local database, the same behavior is available through:
+For a fresh local/test database that needs demo accounts, run:
 
 ```bash
 npm run seed

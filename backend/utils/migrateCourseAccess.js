@@ -1,10 +1,18 @@
 require('dotenv').config();
 const connectDB = require('../config/db');
-const { seedData } = require('./seed');
+const { preExpressCourse, preExpressLessons } = require('../data/preExpressCourse');
+const { expressCourse, expressLessons } = require('../data/expressCourse');
+const { upsertCourse, backfillLegacyProgress } = require('./seed');
 
 const run = async () => {
     await connectDB();
-    await seedData();
+    await upsertCourse(
+        preExpressCourse,
+        preExpressLessons,
+        ['منشئ الألعاب مع Code.org']
+    );
+    await upsertCourse(expressCourse, expressLessons);
+    await backfillLegacyProgress();
     console.log('Course/access migration completed without deleting existing progress.');
     process.exit(0);
 };
