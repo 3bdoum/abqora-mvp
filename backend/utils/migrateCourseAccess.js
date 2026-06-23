@@ -1,24 +1,23 @@
 require('dotenv').config();
 const connectDB = require('../config/db');
 const { preExpressCourse, preExpressLessons } = require('../data/preExpressCourse');
+const { expressCourse, expressLessons } = require('../data/expressCourse');
 const { upsertCourse, backfillLegacyProgress } = require('./seed');
 
 const run = async () => {
-    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_CURRICULUM_SYNC !== 'true') {
-        throw new Error('Refusing to sync production curriculum without ALLOW_CURRICULUM_SYNC=true.');
-    }
     await connectDB();
-    const course = await upsertCourse(
+    await upsertCourse(
         preExpressCourse,
         preExpressLessons,
         ['منشئ الألعاب مع Code.org']
     );
+    await upsertCourse(expressCourse, expressLessons);
     await backfillLegacyProgress();
-    console.log(`Pre-reader Express synced in place: ${course.lessons.length} lessons; existing progress preserved.`);
+    console.log('Course/access migration completed without deleting existing progress.');
     process.exit(0);
 };
 
 run().catch((error) => {
-    console.error('Curriculum sync error:', error.message);
+    console.error('Migration error:', error.message);
     process.exit(1);
 });

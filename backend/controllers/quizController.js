@@ -1,8 +1,29 @@
 const Quiz = require('../models/quizModel');
 const Lesson = require('../models/lessonModel');
 const Progress = require('../models/progressModel');
+const Course = require('../models/courseModel');
+const { getLessonState } = require('../utils/progressAccess');
+const { isObjectId } = require('../utils/validation');
+
+const ensureQuizAccess = async (user, lesson) => {
+    if (user.role !== 'student') return ['teacher', 'admin'].includes(user.role);
+    const [course, progress] = await Promise.all([
+        Course.findById(lesson.course).populate({ path: 'lessons', options: { sort: { order: 1 } } }),
+        Progress.findOne({ user: user._id, course: lesson.course }),
+    ]);
+    if (!course || !progress) return false;
+    return getLessonState({ lessons: course.lessons, lesson, progress }) !== 'locked';
+};
 
 const getQuizByLesson = async (req, res) => {
+    if (!isObjectId(req.params.lessonId)) {
+        return res.status(400).json({ message: 'معرّف الدرس غير صالح' });
+    }
+    const lesson = await Lesson.findById(req.params.lessonId);
+    if (!lesson) return res.status(404).json({ message: 'الدرس غير موجود' });
+    if (!(await ensureQuizAccess(req.user, lesson))) {
+        return res.status(403).json({ message: 'لا يمكن الوصول إلى اختبار درس مقفل' });
+    }
     const quiz = await Quiz.findOne({ lesson: req.params.lessonId });
     if (!quiz) {
         return res.status(404).json({ message: 'الاختبار غير موجود' });
@@ -12,6 +33,9 @@ const getQuizByLesson = async (req, res) => {
 
 const submitQuiz = async (req, res) => {
     const { quizId, answers } = req.body;
+    if (req.user.role !== 'student' || !isObjectId(quizId) || !Array.isArray(answers)) {
+        return res.status(400).json({ message: 'بيانات الاختبار غير صالحة' });
+    }
     const quiz = await Quiz.findById(quizId);
     if (!quiz) {
         return res.status(404).json({ message: 'الاختبار غير موجود' });
@@ -20,6 +44,9 @@ const submitQuiz = async (req, res) => {
     const lesson = await Lesson.findById(quiz.lesson);
     if (!lesson) {
         return res.status(400).json({ message: 'درس الاختبار غير موجود' });
+    }
+    if (!(await ensureQuizAccess(req.user, lesson))) {
+        return res.status(403).json({ message: 'لا يمكن إرسال اختبار درس مقفل' });
     }
 
     let score = 0;

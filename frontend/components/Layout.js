@@ -21,7 +21,8 @@ export default function Layout({ children }) {
     };
 
     const getRoleLabel = (role) => {
-        if (role === 'admin') return 'معلم';
+        if (role === 'admin') return 'مدير';
+        if (role === 'teacher') return 'معلم';
         if (role === 'parent') return 'ولي أمر';
         return 'طالب';
     };
@@ -59,6 +60,16 @@ export default function Layout({ children }) {
                                     style={{ textDecoration: 'none' }}
                                 >
                                     لوحة المتابعة
+                                </Link>
+                            )}
+
+                            {(user.role === 'teacher' || user.role === 'admin') && (
+                                <Link
+                                    href="/teacher/dashboard"
+                                    className="small-button secondary"
+                                    style={{ textDecoration: 'none' }}
+                                >
+                                    متابعة الطلاب
                                 </Link>
                             )}
 

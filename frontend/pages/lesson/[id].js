@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
+import BlockActivityPlayer from '../../components/BlockActivityPlayer';
 import API from '../../utils/api';
 
 const getEmbedUrl = (url) => {
@@ -44,12 +45,21 @@ const getExternalVideoUrl = (url) => {
     }
 };
 
+const lessonStatusLabels = {
+    locked: ['مقفل', '🔒', 'لا يمكن فتح هذا الدرس قبل إكمال السابق.'],
+    available: ['متاح الآن', '▶', 'ابدأ النشاط عندما تكون جاهزاً.'],
+    in_progress: ['قيد التعلم', '◐', 'أكمل النشاط ثم أرسله للمراجعة.'],
+    awaiting_approval: ['بانتظار المعلم', '⏳', 'تم الإرسال وينتظر اعتماد المعلم.'],
+    completed: ['مكتمل', '✓', 'أحسنت! يمكنك مراجعة الدرس متى شئت.'],
+};
+
 export default function LessonPage() {
     const router = useRouter();
     const { id } = router.query;
     const [lesson, setLesson] = useState(null);
     const [progress, setProgress] = useState(null);
-    const [completed, setCompleted] = useState(false);
+    const [lessonState, setLessonState] = useState('in_progress');
+    const [pageError, setPageError] = useState('');
 
     // Project submission form state
     const [projectUrl, setProjectUrl] = useState('');
@@ -72,6 +82,7 @@ export default function LessonPage() {
                 // Fetch lesson details
                 const lessonRes = await API.get(`/lessons/${id}`);
                 setLesson(lessonRes.data);
+                setLessonState(lessonRes.data.studentState || 'in_progress');
 
                 // Fetch progress for the course
                 const progressRes = await API.get(`/progress/${lessonRes.data.course}`);
@@ -80,7 +91,7 @@ export default function LessonPage() {
                 const isDone = progressRes.data.completedLessons?.some(
                     (l) => (l._id || l) === lessonRes.data._id
                 );
-                setCompleted(isDone);
+                if (isDone) setLessonState('completed');
 
                 // Fetch submissions to see if student submitted a project for this lesson
                 const submissionsRes = await API.get('/submissions');
@@ -93,7 +104,7 @@ export default function LessonPage() {
                     setDescription(matchedSub.description);
                 }
             } catch (err) {
-                console.error(err);
+                setPageError(err.response?.data?.message || 'تعذر تحميل الدرس');
             }
         };
 
@@ -102,13 +113,14 @@ export default function LessonPage() {
 
     const markLessonComplete = async () => {
         try {
-            await API.post('/progress/lesson', {
+            const { data } = await API.post('/progress/lesson', {
                 courseId: lesson.course,
                 lessonId: lesson._id
             });
-            setCompleted(true);
+            setLessonState(data.studentState || 'awaiting_approval');
+            setSubMessage('تم تسجيل انتهائك من النشاط. الدرس الآن بانتظار موافقة المعلم.');
         } catch (err) {
-            console.error('تعذر تسجيل اكتمال الدرس');
+            setSubError(err.response?.data?.message || 'تعذر إرسال طلب الإكمال');
         }
     };
 
@@ -141,19 +153,36 @@ export default function LessonPage() {
     const videoUrl = lesson?.videoUrl?.trim() || '';
     const embedUrl = getEmbedUrl(videoUrl);
     const externalVideoUrl = getExternalVideoUrl(videoUrl);
+    const [statusLabel, statusIcon, statusHelp] = lessonStatusLabels[lessonState] || lessonStatusLabels.in_progress;
 
     return (
         <Layout>
             <section className="page shell rtl">
+                {pageError && (
+                    <div className="error-box">
+                        {pageError}
+                        <div style={{ marginTop: '12px' }}>
+                            <Link href="/dashboard" className="button secondary">العودة لدليل الدورات</Link>
+                        </div>
+                    </div>
+                )}
                 {lesson ? (
                     <>
                         <Link href={{ pathname: '/course', query: { id: lesson.course } }} className="button secondary" style={{ marginBottom: '20px', textDecoration: 'none', display: 'inline-flex' }}>
                             ↩ العودة لقائمة الدروس
                         </Link>
 
-                        <div className="lesson-card">
-                            <h1>{lesson.title}</h1>
-                            <p style={{ fontSize: '1.1rem', marginTop: '12px' }}>{lesson.content}</p>
+                        <div className="lesson-hero-card">
+                            <div>
+                                <span className="eyebrow">الدرس {lesson.order}</span>
+                                <h1>{lesson.title}</h1>
+                                <p>{lesson.content}</p>
+                            </div>
+                            <aside className={`lesson-status-panel state-${lessonState}`}>
+                                <span aria-hidden="true">{statusIcon}</span>
+                                <strong>{statusLabel}</strong>
+                                <p>{statusHelp}</p>
+                            </aside>
                         </div>
 
                         {/* YouTube Tutorial Video */}
@@ -223,8 +252,32 @@ export default function LessonPage() {
                             </div>
                         )}
 
+                        {lesson.nativeActivity?.enabled && (
+                            <BlockActivityPlayer
+                                lessonId={lesson._id}
+                                activity={lesson.nativeActivity}
+                                lessonState={lessonState}
+                                onSubmitted={(state) => {
+                                    setLessonState(state || 'awaiting_approval');
+                                    setSubMessage('تم التحقق من الحل. الدرس الآن بانتظار موافقة المعلم.');
+                                    setSubError('');
+                                }}
+                            />
+                        )}
+
+                        {lesson.isPlaceholder && !lesson.nativeActivity?.enabled && (
+                            <div className="card placeholder-lesson-card">
+                                <h2>النشاط داخل عبقورة قيد التحضير 🧩</h2>
+                                <p>
+                                    هذا الدرس موجود في تسلسل الدورة حتى نحافظ على بنية المسار وعدد الدروس،
+                                    لكننا لم نضع له بعد نشاطاً أصلياً داخل عبقورة. لن نفتح رابط Code.org مباشر
+                                    للطالب، ولن نحتسب الدرس كمكتمل حتى يصبح له نشاط آمن داخل المنصة.
+                                </p>
+                            </div>
+                        )}
+
                         {/* Code.org Activity Redirect */}
-                        {lesson.codeOrgLink && (
+                        {lesson.codeOrgLink && !lesson.nativeActivity?.enabled && !lesson.isPlaceholder && (
                             <div className="card" style={{ marginTop: '32px', textAlign: 'center', background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', borderColor: '#7dd3fc' }}>
                                 <h2>التطبيق العملي على منصة Code.org 🎮</h2>
                                 <p style={{ margin: '12px 0 24px' }}>
@@ -237,7 +290,7 @@ export default function LessonPage() {
                         )}
 
                         {/* Project Submission Box (If lesson is a milestone, e.g. Lesson 2, 4, 6) */}
-                        {[2, 4, 6].includes(lesson.order) && (
+                        {!lesson.isPlaceholder && [2, 4, 6].includes(lesson.order) && (
                             <div className="card" style={{ marginTop: '32px' }}>
                                 <h2>تسليم المشروع البرمجي 🛠️ (مطلوب)</h2>
                                 <p style={{ marginBottom: '20px' }}>
@@ -290,33 +343,45 @@ export default function LessonPage() {
                         )}
 
                         {/* Navigation Actions */}
-                        <div className="card" style={{ marginTop: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+                        <div className="card completion-card">
                             <h2>خطوة التقييم والاكتمال ✍️</h2>
                             <p>
                                 عند انتهائك من مشاهدة الشرح والتطبيق العملي، قم بتسجيل اكتمال الدرس لتفعيل اختبار التقدم.
                             </p>
 
                             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                {!completed ? (
-                                    <button onClick={markLessonComplete} className="button">
-                                        تحديد كـ "مكتمل" ✓
-                                    </button>
-                                ) : (
+                                {lessonState === 'awaiting_approval' ? (
+                                    <span className="tag status-pending" style={{ fontSize: '1rem', padding: '10px 20px' }}>
+                                        بانتظار موافقة المعلم ⏳
+                                    </span>
+                                ) : lessonState === 'completed' ? (
                                     <span className="tag status-completed" style={{ fontSize: '1rem', padding: '10px 20px' }}>
                                         الدرس مكتمل بنجاح!
                                     </span>
+                                ) : lesson.nativeActivity?.enabled ? (
+                                    <span className="tag" style={{ fontSize: '1rem', padding: '10px 20px' }}>
+                                        أكمل تحدّي الروبوت لإرسال الحل
+                                    </span>
+                                ) : lesson.isPlaceholder ? (
+                                    <span className="tag status-locked" style={{ fontSize: '1rem', padding: '10px 20px' }}>
+                                        الدرس غير متاح بعد داخل عبقورة
+                                    </span>
+                                ) : (
+                                    <button onClick={markLessonComplete} className="button">
+                                        انتهيت من النشاط — إرسال للمراجعة ✓
+                                    </button>
                                 )}
 
                                 <button
                                     onClick={() => router.push({ pathname: '/quiz', query: { id: lesson._id } })}
-                                    className={`button ${completed ? 'btn-primary' : 'btn-secondary'}`}
+                                    className="button btn-secondary"
                                 >
                                     دخول اختبار الدرس ✍️
                                 </button>
                             </div>
                         </div>
                     </>
-                ) : (
+                ) : !pageError && (
                     <p style={{ textAlign: 'center', marginTop: '40px' }}>جاري التحميل...</p>
                 )}
             </section>

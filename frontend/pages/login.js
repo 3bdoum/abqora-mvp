@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import API from '../utils/api';
+import API, { API_BASE_URL } from '../utils/api';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
@@ -14,7 +14,11 @@ export default function Login() {
         // If already logged in, redirect to dashboard
         const token = localStorage.getItem('token');
         if (token) {
-            router.push('/dashboard');
+            const role = localStorage.getItem('userRole');
+            if (role === 'teacher') router.push('/teacher/dashboard');
+            else if (role === 'admin') router.push('/admin');
+            else if (role === 'parent') router.push('/parent/dashboard');
+            else router.push('/dashboard');
         }
     }, []);
 
@@ -36,9 +40,16 @@ export default function Login() {
             localStorage.setItem('userRole', data.role);
             localStorage.setItem('userAgeGroup', data.ageGroup);
             
-            router.push('/dashboard');
+            if (data.role === 'teacher') router.push('/teacher/dashboard');
+            else if (data.role === 'admin') router.push('/admin');
+            else if (data.role === 'parent') router.push('/parent/dashboard');
+            else router.push('/dashboard');
         } catch (error) {
-            setMessage(error.response?.data?.message || 'حدث خطأ أثناء تسجيل الدخول. يرجى التحقق من البيانات.');
+            if (!error.response) {
+                setMessage(`تعذر الاتصال بخادم عبقورا. تأكد أن backend يعمل على ${API_BASE_URL}`);
+            } else {
+                setMessage(error.response?.data?.message || 'حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.');
+            }
         } finally {
             setLoading(false);
         }

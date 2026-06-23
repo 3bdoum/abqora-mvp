@@ -3,6 +3,12 @@ const Course = require('../models/courseModel');
 const Quiz = require('../models/quizModel');
 const Certificate = require('../models/certificateModel');
 const User = require('../models/userModel');
+const Lesson = require('../models/lessonModel');
+const ProgressAuditLog = require('../models/progressAuditLogModel');
+const { getLessonState, getOrCreateLessonProgress } = require('../utils/progressAccess');
+const { canManageStudent } = require('../utils/teacherAccess');
+const { isObjectId } = require('../utils/validation');
+const { validateNativeActivity } = require('../utils/nativeActivity');
 
 const getCertificateUrl = (certificateId) => {
     const certificatePath = `/certificate?id=${encodeURIComponent(certificateId)}`;
@@ -17,10 +23,17 @@ const getCertificateUrl = (certificateId) => {
 
 const getProgressByCourse = async (req, res) => {
     try {
+        if (req.user.role !== 'student') {
+            return res.status(403).json({ message: 'هذا المسار متاح للطلاب فقط' });
+        }
+        if (!isObjectId(req.params.courseId)) {
+            return res.status(400).json({ message: 'معرّف الدورة غير صالح' });
+        }
         const progress = await Progress.findOne({ user: req.user.id, course: req.params.courseId })
             .populate('completedLessons')
+            .populate('lessonProgress.lesson')
             .populate('quizResults.quiz');
-        res.json(progress || { completedLessons: [], quizResults: [] });
+        res.json(progress || { enrolled: false, completedLessons: [], lessonProgress: [], quizResults: [] });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -29,14 +42,129 @@ const getProgressByCourse = async (req, res) => {
 const updateLessonProgress = async (req, res) => {
     try {
         const { courseId, lessonId } = req.body;
-        const progress = await Progress.findOneAndUpdate(
-            { user: req.user.id, course: courseId },
-            { $addToSet: { completedLessons: lessonId } },
-            { upsert: true, new: true }
-        );
-        res.json(progress);
+        if (req.user.role !== 'student') {
+            return res.status(403).json({ message: 'الطلاب فقط يمكنهم إرسال طلب إكمال' });
+        }
+        if (!isObjectId(courseId) || !isObjectId(lessonId)) {
+            return res.status(400).json({ message: 'بيانات الدرس غير صالحة' });
+        }
+
+        const [course, lesson, progress] = await Promise.all([
+            Course.findById(courseId).populate({ path: 'lessons', options: { sort: { order: 1 } } }),
+            Lesson.findById(lessonId),
+            Progress.findOne({ user: req.user._id, course: courseId }),
+        ]);
+        if (!course || !lesson || String(lesson.course) !== String(courseId)) {
+            return res.status(400).json({ message: 'الدرس لا ينتمي إلى هذه الدورة' });
+        }
+        if (!progress) {
+            return res.status(403).json({ message: 'سجّل في الدورة أولاً' });
+        }
+        if (lesson.isPlaceholder) {
+            return res.status(400).json({
+                message: 'هذا الدرس ما زال بانتظار نشاط عبقورة أصلي ولا يمكن إرساله للإكمال بعد'
+            });
+        }
+        if (lesson.nativeActivity?.enabled) {
+            return res.status(400).json({
+                message: 'يجب تشغيل النشاط داخل عبقورة وإرسال حل صحيح قبل طلب الإكمال'
+            });
+        }
+
+        const currentState = getLessonState({ lessons: course.lessons, lesson, progress });
+        if (currentState === 'locked') {
+            return res.status(403).json({ message: 'لا يمكن تجاوز ترتيب الدروس' });
+        }
+        if (currentState === 'completed' || currentState === 'awaiting_approval') {
+            return res.json({ progress, studentState: currentState });
+        }
+
+        const entry = getOrCreateLessonProgress(progress, lesson._id);
+        const fromStatus = entry.status;
+        entry.status = lesson.requiresApproval ? 'awaiting_approval' : 'completed';
+        entry.submittedAt = new Date();
+        entry.updatedAt = new Date();
+        if (!lesson.requiresApproval) {
+            entry.completedAt = new Date();
+            progress.completedLessons.addToSet(lesson._id);
+        }
+        await progress.save();
+
+        await ProgressAuditLog.create({
+            actor: req.user._id,
+            student: req.user._id,
+            course: course._id,
+            lesson: lesson._id,
+            action: 'submitted',
+            fromStatus,
+            toStatus: entry.status,
+        });
+
+        return res.json({ progress, studentState: entry.status });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const submitNativeActivity = async (req, res) => {
+    try {
+        const { lessonId, commands } = req.body;
+        if (req.user.role !== 'student') {
+            return res.status(403).json({ message: 'الطلاب فقط يمكنهم إرسال حلول الأنشطة' });
+        }
+        if (!isObjectId(lessonId)) {
+            return res.status(400).json({ message: 'معرّف الدرس غير صالح' });
+        }
+
+        const lesson = await Lesson.findById(lessonId);
+        if (!lesson) return res.status(404).json({ message: 'الدرس غير موجود' });
+
+        const [course, progress] = await Promise.all([
+            Course.findById(lesson.course).populate({ path: 'lessons', options: { sort: { order: 1 } } }),
+            Progress.findOne({ user: req.user._id, course: lesson.course }),
+        ]);
+        if (!course || !progress) {
+            return res.status(403).json({ message: 'سجّل في الدورة أولاً' });
+        }
+
+        const currentState = getLessonState({ lessons: course.lessons, lesson, progress });
+        if (currentState === 'locked') {
+            return res.status(403).json({ message: 'لا يمكن تجاوز ترتيب الدروس' });
+        }
+        if (currentState === 'completed' || currentState === 'awaiting_approval') {
+            return res.json({ progress, studentState: currentState });
+        }
+
+        const validation = validateNativeActivity(lesson.nativeActivity, commands);
+        if (!validation.valid) {
+            return res.status(400).json({ message: validation.message });
+        }
+
+        const entry = getOrCreateLessonProgress(progress, lesson._id);
+        const fromStatus = entry.status;
+        entry.status = lesson.requiresApproval ? 'awaiting_approval' : 'completed';
+        entry.submittedAt = new Date();
+        entry.updatedAt = new Date();
+        if (!lesson.requiresApproval) {
+            entry.completedAt = new Date();
+            progress.completedLessons.addToSet(lesson._id);
+        }
+        await progress.save();
+
+        await ProgressAuditLog.create({
+            actor: req.user._id,
+            student: req.user._id,
+            course: course._id,
+            lesson: lesson._id,
+            action: 'submitted',
+            fromStatus,
+            toStatus: entry.status,
+            note: 'تم التحقق من حل نشاط عبقورة على الخادم',
+        });
+
+        return res.json({ progress, studentState: entry.status });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
     }
 };
 
@@ -45,17 +173,7 @@ const updateQuizProgress = async (req, res) => {
 };
 
 const completeCourse = async (req, res) => {
-    try {
-        const { courseId, certificateUrl } = req.body;
-        const progress = await Progress.findOneAndUpdate(
-            { user: req.user.id, course: courseId },
-            { certificateUrl },
-            { new: true }
-        );
-        res.json(progress);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(410).json({ message: 'استخدم مسار التحقق من الشهادة؛ لا يمكن تعيين الإكمال من العميل' });
 };
 
 // Get progress for a linked student (Parent)
@@ -70,12 +188,17 @@ const getStudentProgress = async (req, res) => {
             if (!hasLinkedStudent) {
                 return res.status(403).json({ message: 'غير مصرح للوصول لبيانات هذا الطالب' });
             }
-        } else if (req.user.role !== 'admin' && req.user.id !== studentId) {
+        } else if (req.user.role === 'teacher') {
+            if (!(await canManageStudent(req.user, studentId))) {
+                return res.status(403).json({ message: 'هذا الطالب غير معيّن لهذا المعلم' });
+            }
+        } else if (req.user.role !== 'admin' && String(req.user.id) !== studentId) {
             return res.status(403).json({ message: 'غير مصرح' });
         }
 
         const progress = await Progress.findOne({ user: studentId, course: courseId })
             .populate('completedLessons')
+            .populate('lessonProgress.lesson')
             .populate('quizResults.quiz');
             
         res.json(progress || { completedLessons: [], quizResults: [] });
@@ -89,6 +212,12 @@ const checkOrCreateCertificate = async (req, res) => {
     try {
         const { courseId } = req.body;
         const userId = req.user.id;
+        if (req.user.role !== 'student') {
+            return res.status(403).json({ message: 'طلب الشهادة متاح للطلاب فقط' });
+        }
+        if (!isObjectId(courseId)) {
+            return res.status(400).json({ message: 'معرّف الدورة غير صالح' });
+        }
 
         const course = await Course.findById(courseId).populate('lessons');
         if (!course) {
@@ -167,6 +296,7 @@ const checkOrCreateCertificate = async (req, res) => {
 module.exports = {
     getProgressByCourse,
     updateLessonProgress,
+    submitNativeActivity,
     updateQuizProgress,
     completeCourse,
     getStudentProgress,

@@ -6,98 +6,151 @@ const Course = require('../models/courseModel');
 const Lesson = require('../models/lessonModel');
 const Quiz = require('../models/quizModel');
 const Progress = require('../models/progressModel');
-const Certificate = require('../models/certificateModel');
-const Submission = require('../models/submissionModel');
+const TeacherStudentAssignment = require('../models/teacherStudentAssignmentModel');
 const { preExpressCourse, preExpressLessons } = require('../data/preExpressCourse');
+const { expressCourse, expressLessons } = require('../data/expressCourse');
 
-const run = async () => {
-    try {
-        if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PRODUCTION_SEED !== 'true') {
-            console.error('Refusing to seed in production without ALLOW_PRODUCTION_SEED=true.');
-            process.exit(1);
+const upsertUser = async ({ name, email, password, role, ageGroup }) => {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    return User.findOneAndUpdate(
+        { email },
+        {
+            $set: { name, role, ageGroup },
+            $setOnInsert: { email, password: hashedPassword, registeredAt: new Date() },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+};
+
+const upsertCourse = async (courseData, lessonsData, legacyTitles = []) => {
+    let course = await Course.findOne({
+        $or: [{ slug: courseData.slug }, { title: { $in: [courseData.title, ...legacyTitles] } }]
+    });
+    if (!course) course = new Course();
+    Object.assign(course, courseData);
+    await course.save();
+
+    const lessonIds = [];
+    for (const lessonData of lessonsData) {
+        let lesson = await Lesson.findOne({
+            $or: [
+                { stableId: lessonData.stableId },
+                { course: course._id, order: lessonData.order },
+            ]
+        });
+        if (!lesson) lesson = new Lesson();
+        Object.assign(lesson, {
+            stableId: lessonData.stableId,
+            title: lessonData.title,
+            content: lessonData.content,
+            videoUrl: lessonData.videoUrl || '',
+            codeOrgLink: lessonData.codeOrgLink || '',
+            course: course._id,
+            order: lessonData.order,
+            type: lessonData.type || 'activity',
+            requiresApproval: lessonData.requiresApproval !== false,
+            isPlaceholder: Boolean(lessonData.isPlaceholder),
+            nativeActivity: lessonData.nativeActivity || undefined,
+        });
+        await lesson.save();
+        lessonIds.push(lesson._id);
+
+        if (lessonData.quiz) {
+            await Quiz.findOneAndUpdate(
+                { lesson: lesson._id },
+                {
+                    $set: {
+                        title: lessonData.quiz.title,
+                        questions: lessonData.quiz.questions,
+                        passingScore: 70,
+                    }
+                },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
         }
+    }
 
-        await connectDB();
+    course.lessons = lessonIds;
+    await course.save();
+    return course;
+};
 
-        await User.deleteMany({});
-        await Course.deleteMany({});
-        await Lesson.deleteMany({});
-        await Quiz.deleteMany({});
-        await Progress.deleteMany({});
-        await Certificate.deleteMany({});
-        await Submission.deleteMany({});
-
-        console.log('Cleared all collections.');
-
-        const hashedAdmin = await bcrypt.hash('admin123', 10);
-        const admin = await User.create({
-            name: 'معلم عبقورة',
-            email: 'admin@abqora.com',
-            password: hashedAdmin,
-            role: 'admin',
-            ageGroup: 'none'
-        });
-        console.log('Created admin account:', admin.email);
-
-        const hashedStudent = await bcrypt.hash('student123', 10);
-        const student = await User.create({
-            name: 'عمر أحمد',
-            email: 'student@abqora.com',
-            password: hashedStudent,
-            role: 'student',
-            ageGroup: '9-12'
-        });
-        console.log('Created student account:', student.email);
-
-        const hashedParent = await bcrypt.hash('parent123', 10);
-        const parent = await User.create({
-            name: 'أحمد علي',
-            email: 'parent@abqora.com',
-            password: hashedParent,
-            role: 'parent',
-            ageGroup: 'none',
-            children: [student._id]
-        });
-        console.log('Created parent account:', parent.email);
-
-        student.parent = parent._id;
-        await student.save();
-
-        const course = await Course.create(preExpressCourse);
-        console.log('Created course:', course.title);
-
-        const lessonIds = [];
-
-        for (const data of preExpressLessons) {
-            const lesson = await Lesson.create({
-                title: data.title,
-                content: data.content,
-                videoUrl: data.videoUrl,
-                codeOrgLink: data.codeOrgLink,
-                course: course._id,
-                order: data.order
-            });
-            console.log('Created Lesson:', lesson.title);
-            lessonIds.push(lesson._id);
-
-            await Quiz.create({
-                lesson: lesson._id,
-                title: data.quiz.title,
-                questions: data.quiz.questions,
-                passingScore: 70
-            });
-            console.log('Created Quiz for:', lesson.title);
+const backfillLegacyProgress = async () => {
+    const progresses = await Progress.find();
+    for (const progress of progresses) {
+        let changed = false;
+        for (const lessonId of progress.completedLessons || []) {
+            const exists = progress.lessonProgress.some((entry) => String(entry.lesson) === String(lessonId));
+            if (!exists) {
+                progress.lessonProgress.push({
+                    lesson: lessonId,
+                    status: 'completed',
+                    accessOverride: 'default',
+                    completedAt: progress.createdAt || new Date(),
+                    updatedAt: new Date(),
+                });
+                changed = true;
+            }
         }
-
-        course.lessons = lessonIds;
-        await course.save();
-
-        console.log('Successfully seeded database with Course, 11 Lessons, 11 Quizzes, Admin, Student, and Parent accounts.');
-        process.exit(0);
-    } catch (err) {
-        console.error('Seed error:', err);
-        process.exit(1);
+        if (changed) await progress.save();
     }
 };
 
-run();
+const seedData = async () => {
+    const admin = await upsertUser({
+        name: 'مدير عبقورا', email: 'admin@abqora.com', password: 'admin123', role: 'admin', ageGroup: 'none'
+    });
+    const teacher = await upsertUser({
+        name: 'المعلمة سارة', email: 'teacher@abqora.com', password: 'teacher123', role: 'teacher', ageGroup: 'none'
+    });
+    const student = await upsertUser({
+        name: 'عمر أحمد', email: 'student@abqora.com', password: 'student123', role: 'student', ageGroup: '9-12'
+    });
+    const parent = await upsertUser({
+        name: 'أحمد علي', email: 'parent@abqora.com', password: 'parent123', role: 'parent', ageGroup: 'none'
+    });
+
+    await User.updateOne({ _id: parent._id }, { $addToSet: { children: student._id } });
+    await User.updateOne({ _id: student._id }, { $set: { parent: parent._id } });
+
+    const preCourse = await upsertCourse(
+        preExpressCourse,
+        preExpressLessons,
+        ['منشئ الألعاب مع Code.org']
+    );
+    const express = await upsertCourse(expressCourse, expressLessons);
+
+    await TeacherStudentAssignment.findOneAndUpdate(
+        { teacher: teacher._id, student: student._id },
+        { $set: { active: true }, $setOnInsert: { assignedBy: admin._id, createdAt: new Date() } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    await Progress.findOneAndUpdate(
+        { user: student._id, course: preCourse._id },
+        { $setOnInsert: { completedLessons: [], lessonProgress: [], enrolledAt: new Date() } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    await backfillLegacyProgress();
+    return { admin, teacher, student, parent, courses: [preCourse, express] };
+};
+
+const run = async () => {
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PRODUCTION_SEED !== 'true') {
+        throw new Error('Refusing to seed in production without ALLOW_PRODUCTION_SEED=true.');
+    }
+    await connectDB();
+    const result = await seedData();
+    console.log(`Seed complete: ${result.courses.length} courses, sample teacher and assignment ready.`);
+    process.exit(0);
+};
+
+if (require.main === module) {
+    run().catch((error) => {
+        console.error('Seed error:', error.message);
+        process.exit(1);
+    });
+}
+
+module.exports = { seedData, upsertCourse, backfillLegacyProgress };
