@@ -12,40 +12,80 @@ const expressCourse = {
     published: true,
 };
 
+const sequenceMaze = (config) => ({
+    enabled: true,
+    kind: 'sequence_maze',
+    version: 1,
+    config,
+});
+
+const nativeLessonData = {
+    1: {
+        stableId: 'express-2025-l01',
+        title: 'الدرس 1: التتابع في المتاهة',
+        content: 'رتّب أوامر الحركة والالتفاف بالترتيب الصحيح حتى يصل روبوت عبقورة إلى النجمة. شغّل الحل، راقب كل خطوة، ثم أرسله للمعلم عندما ينجح.',
+        nativeActivity: sequenceMaze({
+            title: 'برمج الروبوت ليصل إلى النجمة',
+            instructions: 'استخدم أوامر الحركة والالتفاف لبناء سلسلة واحدة. الهدف هو الوصول للنجمة بدون الخروج عن الطريق.',
+            rows: 5,
+            columns: 5,
+            start: { row: 4, column: 0, direction: 'east' },
+            goal: { row: 2, column: 4 },
+            validCells: [
+                { row: 4, column: 0 },
+                { row: 4, column: 1 },
+                { row: 4, column: 2 },
+                { row: 3, column: 2 },
+                { row: 2, column: 2 },
+                { row: 2, column: 3 },
+                { row: 2, column: 4 },
+            ],
+            maxBlocks: 12,
+        }),
+    },
+    2: {
+        stableId: 'express-2025-l02',
+        title: 'الدرس 2: ترتيب الأوامر مع المنعطفات',
+        content: 'في هذا التحدي يتدرب الطالب على بناء سلسلة أطول من الأوامر. اتبع المسار خطوة بخطوة، واستخدم الالتفافات في اللحظة المناسبة حتى يصل روبوت عبقورة إلى النجمة.',
+        nativeActivity: sequenceMaze({
+            title: 'مسار أطول وتتابع أدق',
+            instructions: 'هذه المتاهة تحتاج أكثر من منعطف. فكّر في الاتجاه الحالي للروبوت قبل إضافة كل أمر.',
+            rows: 6,
+            columns: 6,
+            start: { row: 5, column: 0, direction: 'east' },
+            goal: { row: 1, column: 5 },
+            validCells: [
+                { row: 5, column: 0 },
+                { row: 5, column: 1 },
+                { row: 4, column: 1 },
+                { row: 3, column: 1 },
+                { row: 3, column: 2 },
+                { row: 3, column: 3 },
+                { row: 2, column: 3 },
+                { row: 1, column: 3 },
+                { row: 1, column: 4 },
+                { row: 1, column: 5 },
+            ],
+            maxBlocks: 16,
+        }),
+    },
+};
+
 const expressLessons = Array.from({ length: 31 }, (_, index) => {
     const order = index + 1;
-    if (order === 1) {
+    const nativeLesson = nativeLessonData[order];
+    if (nativeLesson) {
         return {
-            stableId: 'express-2025-l01',
+            stableId: nativeLesson.stableId,
             order,
-            title: 'الدرس 1: التتابع في المتاهة',
-            content: 'رتّب أوامر الحركة والالتفاف بالترتيب الصحيح حتى يصل روبوت عبقورة إلى النجمة. شغّل الحل، راقب كل خطوة، ثم أرسله للمعلم عندما ينجح.',
+            title: nativeLesson.title,
+            content: nativeLesson.content,
             videoUrl: '',
             codeOrgLink: '',
             type: 'activity',
             requiresApproval: true,
             isPlaceholder: false,
-            nativeActivity: {
-                enabled: true,
-                kind: 'sequence_maze',
-                version: 1,
-                config: {
-                    rows: 5,
-                    columns: 5,
-                    start: { row: 4, column: 0, direction: 'east' },
-                    goal: { row: 2, column: 4 },
-                    validCells: [
-                        { row: 4, column: 0 },
-                        { row: 4, column: 1 },
-                        { row: 4, column: 2 },
-                        { row: 3, column: 2 },
-                        { row: 2, column: 2 },
-                        { row: 2, column: 3 },
-                        { row: 2, column: 4 },
-                    ],
-                    maxBlocks: 12,
-                },
-            },
+            nativeActivity: nativeLesson.nativeActivity,
         };
     }
 

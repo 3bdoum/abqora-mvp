@@ -58,11 +58,13 @@ export default function BlockActivityPlayer({ lessonId, activity, lessonState, o
     const workspaceHost = useRef(null);
     const workspaceRef = useRef(null);
     const [robot, setRobot] = useState(activity.config.start);
-    const [message, setMessage] = useState('اسحب الأوامر، صِلها ببعضها، ثم شغّل الحل.');
+    const [message, setMessage] = useState(activity.config.startMessage || 'اسحب الأوامر، صِلها ببعضها، ثم شغّل الحل.');
     const [messageType, setMessageType] = useState('info');
     const [running, setRunning] = useState(false);
     const config = activity.config;
     const isReadOnly = ['awaiting_approval', 'completed'].includes(lessonState);
+    const activityTitle = config.title || 'برمج الروبوت ليصل إلى النجمة';
+    const activityInstructions = config.instructions || `الحد الأقصى: ${config.maxBlocks} أمرًا. لا تحتاج إلى مغادرة عبقورة.`;
 
     const cells = useMemo(() => {
         const result = [];
@@ -78,6 +80,12 @@ export default function BlockActivityPlayer({ lessonId, activity, lessonState, o
         () => new Set((config.validCells || []).map(keyOf)),
         [config.validCells]
     );
+
+    useEffect(() => {
+        setRobot(config.start);
+        setMessage(config.startMessage || 'اسحب الأوامر، صِلها ببعضها، ثم شغّل الحل.');
+        setMessageType('info');
+    }, [config.start, config.startMessage, lessonId]);
 
     useEffect(() => {
         let disposed = false;
@@ -241,8 +249,8 @@ export default function BlockActivityPlayer({ lessonId, activity, lessonState, o
             <div className="native-activity-heading">
                 <div>
                     <span className="eyebrow">مختبر عبقورة</span>
-                    <h2 id="native-activity-title">برمج الروبوت ليصل إلى النجمة</h2>
-                    <p>الحد الأقصى: {config.maxBlocks} أمرًا. لا تحتاج إلى مغادرة عبقورة.</p>
+                    <h2 id="native-activity-title">{activityTitle}</h2>
+                    <p>{activityInstructions} الحد الأقصى: {config.maxBlocks} أمرًا.</p>
                 </div>
                 <span className="native-badge">نشاط داخل الموقع</span>
             </div>

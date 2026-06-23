@@ -41,9 +41,35 @@ const nativeActivity = {
     },
 };
 
+const nativeActivityTwo = {
+    enabled: true,
+    kind: 'sequence_maze',
+    version: 1,
+    config: {
+        rows: 6,
+        columns: 6,
+        start: { row: 5, column: 0, direction: 'east' },
+        goal: { row: 1, column: 5 },
+        validCells: [
+            { row: 5, column: 0 }, { row: 5, column: 1 }, { row: 4, column: 1 },
+            { row: 3, column: 1 }, { row: 3, column: 2 }, { row: 3, column: 3 },
+            { row: 2, column: 3 }, { row: 1, column: 3 }, { row: 1, column: 4 },
+            { row: 1, column: 5 },
+        ],
+        maxBlocks: 16,
+    },
+};
+
 const solvedCommands = [
     'move_forward', 'move_forward', 'turn_left', 'move_forward',
     'move_forward', 'turn_right', 'move_forward', 'move_forward',
+];
+
+const solvedCommandsTwo = [
+    'move_forward', 'turn_left', 'move_forward', 'move_forward',
+    'turn_right', 'move_forward', 'move_forward', 'turn_left',
+    'move_forward', 'move_forward', 'turn_right', 'move_forward',
+    'move_forward',
 ];
 
 const tokenFor = (user) => jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -85,7 +111,7 @@ const setupScenario = async () => {
             order,
             requiresApproval: true,
             codeOrgLink: `https://studio.code.org/courses/express-2025/units/1/lessons/${order}/levels/1`,
-            nativeActivity: order === 1 ? nativeActivity : undefined,
+            nativeActivity: order === 1 ? nativeActivity : order === 2 ? nativeActivityTwo : undefined,
         }));
     }
     course.lessons = lessons.map((lesson) => lesson._id);
@@ -174,6 +200,40 @@ test('native activity requires a server-verified solution', async () => {
     assert.equal(entry, undefined);
 });
 
+test('second native activity unlocks only after the first approved lesson', async () => {
+    const data = await setupScenario();
+
+    const lockedAttempt = await request(app)
+        .post('/api/progress/native-activity')
+        .set(auth(data.tokens.student))
+        .send({ lessonId: data.lessons[1]._id, commands: solvedCommandsTwo });
+    assert.equal(lockedAttempt.status, 403);
+
+    await request(app)
+        .post('/api/progress/native-activity')
+        .set(auth(data.tokens.student))
+        .send({ lessonId: data.lessons[0]._id, commands: solvedCommands });
+
+    await request(app)
+        .patch(`/api/teacher/students/${data.student._id}/lessons/${data.lessons[0]._id}`)
+        .set(auth(data.tokens.teacher))
+        .send({ action: 'approve', feedback: 'أحسنت' });
+
+    const submitted = await request(app)
+        .post('/api/progress/native-activity')
+        .set(auth(data.tokens.student))
+        .send({ lessonId: data.lessons[1]._id, commands: solvedCommandsTwo });
+    assert.equal(submitted.status, 200);
+    assert.equal(submitted.body.studentState, 'awaiting_approval');
+
+    const course = await request(app)
+        .get(`/api/courses/${data.course._id}`)
+        .set(auth(data.tokens.student));
+    assert.deepEqual(course.body.lessons.map((lesson) => lesson.studentState), [
+        'completed', 'awaiting_approval', 'locked'
+    ]);
+});
+
 test('student cannot approve their own submission', async () => {
     const data = await setupScenario();
     const response = await request(app)
@@ -258,8 +318,16 @@ test('seed scripts are idempotent', async () => {
     assert.deepEqual(second, first);
     assert.deepEqual(second, { users: 4, courses: 2, lessons: 42, assignments: 1, progress: 1 });
 
-    const nativeLesson = await Lesson.findOne({ stableId: 'express-2025-l01' });
-    assert.equal(nativeLesson.nativeActivity.enabled, true);
-    assert.equal(nativeLesson.isPlaceholder, false);
-    assert.equal(nativeLesson.codeOrgLink, '');
+    const firstNativeLesson = await Lesson.findOne({ stableId: 'express-2025-l01' });
+    const secondNativeLesson = await Lesson.findOne({ stableId: 'express-2025-l02' });
+    const firstPlaceholder = await Lesson.findOne({ stableId: 'express-2025-l03' });
+
+    assert.equal(firstNativeLesson.nativeActivity.enabled, true);
+    assert.equal(firstNativeLesson.isPlaceholder, false);
+    assert.equal(firstNativeLesson.codeOrgLink, '');
+    assert.equal(secondNativeLesson.nativeActivity.enabled, true);
+    assert.equal(secondNativeLesson.isPlaceholder, false);
+    assert.equal(secondNativeLesson.codeOrgLink, '');
+    assert.equal(firstPlaceholder.isPlaceholder, true);
+    assert.equal(firstPlaceholder.codeOrgLink, '');
 });

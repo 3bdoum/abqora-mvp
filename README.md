@@ -107,9 +107,9 @@ Run the seed script only once for demo data, and never after real users exist. I
 Abqora currently includes two student-facing courses:
 
 - `CS Fundamentals: Pre-reader Express` — the existing 11-lesson course. The migration updates the course metadata and adds stable lesson identifiers without replacing lesson documents or deleting `Progress.completedLessons`.
-- `CS Fundamentals: Express Course` — 31 lesson records. Lesson 1 now contains an original Abqora Blockly activity that runs entirely inside the lesson page; lessons 2–31 remain visible in sequence as placeholders, but they do not expose direct Code.org student links until original Abqora activities are authored.
+- `CS Fundamentals: Express Course` — 31 lesson records. Lessons 1–2 now contain original Abqora Blockly activities that run entirely inside the lesson page; lessons 3–31 remain visible in sequence as placeholders, but they do not expose direct Code.org student links until original Abqora activities are authored.
 
-The exact, permitted 31-lesson metadata was not available in this repository or the supplied public page. Lessons 2–31 are deliberately labelled in the UI and database as placeholders (`isPlaceholder: true`) with titles such as `الدرس 2 — العنوان الرسمي مطلوب`. Replace them only when verified metadata is supplied; do not scrape Code.org or copy protected curriculum text.
+The exact, permitted 31-lesson metadata was not available in this repository or the supplied public page. Lessons 3–31 are deliberately labelled in the UI and database as placeholders (`isPlaceholder: true`) with titles such as `الدرس 3 — العنوان الرسمي مطلوب`. Replace them only when verified metadata is supplied; do not scrape Code.org or copy protected curriculum text.
 
 `Progress` remains the student-course enrollment record so existing progress is not split into a duplicate concept. It now contains per-lesson status and manual access overrides alongside the legacy `completedLessons` array. Existing completed lesson IDs are backfilled to the richer structure and remain intact.
 
@@ -145,7 +145,7 @@ Abqora does not scrape Code.org, request instructor-only URLs, impersonate a Cod
 
 ## Native activity authoring
 
-Lesson `express-2025-l01` is the first reusable `sequence_maze` activity. Its public grid, start, goal, walkable cells, and block limit are stored on the existing `Lesson.nativeActivity` field. The browser animates the commands for immediate feedback, while `POST /api/progress/native-activity` performs the authoritative validation before creating the audited completion request. Never treat the browser simulation as proof of completion.
+Lessons `express-2025-l01` and `express-2025-l02` use the first reusable `sequence_maze` activity type. Each lesson stores its public grid, start, goal, walkable cells, lesson-specific instructions, and block limit on the existing `Lesson.nativeActivity` field. The browser animates the commands for immediate feedback, while `POST /api/progress/native-activity` performs the authoritative validation before creating the audited completion request. Never treat the browser simulation as proof of completion.
 
 ## Roles and sample accounts
 
