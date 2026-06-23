@@ -1,9 +1,12 @@
 const EXPRESS_REFERENCE_URL = 'https://studio.code.org/courses/express-2025/units/1';
 
+const expressLessonLink = (lessonNumber) =>
+    `${EXPRESS_REFERENCE_URL}/lessons/${lessonNumber}/levels/1`;
+
 const expressCourse = {
     slug: 'cs-fundamentals-express-course',
     title: 'CS Fundamentals: Express Course',
-    description: 'مسار ذاتي للطلاب الأكبر سناً لتطوير مهارات التفكير الحاسوبي والبرمجة بالبلوكات. عناوين الدروس التفصيلية بانتظار تزويد عبقورا ببيانات موثوقة.',
+    description: 'مسار ذاتي للطلاب الأكبر سناً: يشاهد الطالب شرح عبقورة أولاً، ثم يفتح نشاط Code.org العام للتطبيق، وبعد الانتهاء يرسل طلب الإكمال للمعلم.',
     language: 'العربية',
     level: 'مبتدئ',
     ageRange: '8–14 سنة',
@@ -12,120 +15,39 @@ const expressCourse = {
     published: true,
 };
 
-const sequenceMaze = (config) => ({
-    enabled: true,
-    kind: 'sequence_maze',
-    version: 1,
-    config,
-});
-
-const nativeLessonData = {
+const knownExpressLessons = {
     1: {
-        stableId: 'express-2025-l01',
         title: 'الدرس 1: التتابع في المتاهة',
-        content: 'رتّب أوامر الحركة والالتفاف بالترتيب الصحيح حتى يصل روبوت عبقورة إلى النجمة. شغّل الحل، راقب كل خطوة، ثم أرسله للمعلم عندما ينجح.',
-        nativeActivity: sequenceMaze({
-            title: 'برمج الروبوت ليصل إلى النجمة',
-            instructions: 'استخدم أوامر الحركة والالتفاف لبناء سلسلة واحدة. الهدف هو الوصول للنجمة بدون الخروج عن الطريق.',
-            rows: 5,
-            columns: 5,
-            start: { row: 4, column: 0, direction: 'east' },
-            goal: { row: 2, column: 4 },
-            validCells: [
-                { row: 4, column: 0 },
-                { row: 4, column: 1 },
-                { row: 4, column: 2 },
-                { row: 3, column: 2 },
-                { row: 2, column: 2 },
-                { row: 2, column: 3 },
-                { row: 2, column: 4 },
-            ],
-            maxBlocks: 12,
-        }),
+        content: 'يشاهد الطالب شرح فكرة التتابع وترتيب الأوامر، ثم يطبقها في نشاط Code.org العام.',
     },
     2: {
-        stableId: 'express-2025-l02',
         title: 'الدرس 2: ترتيب الأوامر مع المنعطفات',
-        content: 'في هذا التحدي يتدرب الطالب على بناء سلسلة أطول من الأوامر. اتبع المسار خطوة بخطوة، واستخدم الالتفافات في اللحظة المناسبة حتى يصل روبوت عبقورة إلى النجمة.',
-        nativeActivity: sequenceMaze({
-            title: 'مسار أطول وتتابع أدق',
-            instructions: 'هذه المتاهة تحتاج أكثر من منعطف. فكّر في الاتجاه الحالي للروبوت قبل إضافة كل أمر.',
-            rows: 6,
-            columns: 6,
-            start: { row: 5, column: 0, direction: 'east' },
-            goal: { row: 1, column: 5 },
-            validCells: [
-                { row: 5, column: 0 },
-                { row: 5, column: 1 },
-                { row: 4, column: 1 },
-                { row: 3, column: 1 },
-                { row: 3, column: 2 },
-                { row: 3, column: 3 },
-                { row: 2, column: 3 },
-                { row: 1, column: 3 },
-                { row: 1, column: 4 },
-                { row: 1, column: 5 },
-            ],
-            maxBlocks: 16,
-        }),
+        content: 'نتدرب على قراءة المسار قبل البرمجة، ثم نستخدم أوامر الحركة والالتفاف بالترتيب الصحيح في Code.org.',
     },
     3: {
-        stableId: 'express-2025-l03',
         title: 'الدرس 3: قراءة المسار قبل البرمجة',
-        content: 'قبل أن تضيف الأوامر، تتبع الطريق بعينيك أولاً. في هذا النشاط يبدأ الروبوت من الجهة المقابلة ويحتاج إلى سلسلة دقيقة من التقدم والالتفاف حتى يصل إلى النجمة.',
-        nativeActivity: sequenceMaze({
-            title: 'خطط للمسار ثم برمجه',
-            instructions: 'ابدأ بقراءة الطريق من نقطة البداية إلى النجمة، ثم حوّل الخطة إلى أوامر متصلة في سلسلة واحدة.',
-            rows: 6,
-            columns: 6,
-            start: { row: 5, column: 5, direction: 'west' },
-            goal: { row: 0, column: 0 },
-            validCells: [
-                { row: 5, column: 5 },
-                { row: 5, column: 4 },
-                { row: 5, column: 3 },
-                { row: 4, column: 3 },
-                { row: 4, column: 2 },
-                { row: 3, column: 2 },
-                { row: 2, column: 2 },
-                { row: 2, column: 1 },
-                { row: 2, column: 0 },
-                { row: 1, column: 0 },
-                { row: 0, column: 0 },
-            ],
-            maxBlocks: 18,
-        }),
+        content: 'يتعلم الطالب كيف يحول المسار المرئي إلى خطوات مرتبة، ثم يطبق ذلك في نشاط Code.org.',
     },
 };
 
 const expressLessons = Array.from({ length: 31 }, (_, index) => {
     const order = index + 1;
-    const nativeLesson = nativeLessonData[order];
-    if (nativeLesson) {
-        return {
-            stableId: nativeLesson.stableId,
-            order,
-            title: nativeLesson.title,
-            content: nativeLesson.content,
-            videoUrl: '',
-            codeOrgLink: '',
-            type: 'activity',
-            requiresApproval: true,
-            isPlaceholder: false,
-            nativeActivity: nativeLesson.nativeActivity,
-        };
-    }
+    const lesson = knownExpressLessons[order] || {
+        title: `الدرس ${order}: تدريب Code.org Express`,
+        content: 'شاهد شرح عبقورة المخصص لهذا التمرين، ثم افتح نشاط Code.org العام للتطبيق العملي. هذا عنوان عبقورة عام إلى أن يتم إدخال العنوان الرسمي الموثوق.',
+    };
 
     return {
         stableId: `express-2025-l${String(order).padStart(2, '0')}`,
         order,
-        title: `الدرس ${order} — العنوان الرسمي مطلوب`,
-        content: 'عنصر نائب واضح: لم تُزوّد عبقورا بعد بعنوان ووصف موثوقين أو نشاط أصلي لهذا الدرس. لن تفتح عبقورا رابط Code.org مباشر للطالب؛ يجب تأليف نشاط عبقورة آمن داخل المنصة أولاً.',
+        title: lesson.title,
+        content: lesson.content,
         videoUrl: '',
-        codeOrgLink: '',
+        videoUrls: lesson.videoUrls || [],
+        codeOrgLink: expressLessonLink(order),
         type: 'activity',
         requiresApproval: true,
-        isPlaceholder: true,
+        isPlaceholder: false,
     };
 });
 

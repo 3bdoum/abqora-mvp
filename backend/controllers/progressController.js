@@ -8,7 +8,6 @@ const ProgressAuditLog = require('../models/progressAuditLogModel');
 const { getLessonState, getOrCreateLessonProgress } = require('../utils/progressAccess');
 const { canManageStudent } = require('../utils/teacherAccess');
 const { isObjectId } = require('../utils/validation');
-const { validateNativeActivity } = require('../utils/nativeActivity');
 
 const getCertificateUrl = (certificateId) => {
     const certificatePath = `/certificate?id=${encodeURIComponent(certificateId)}`;
@@ -62,15 +61,9 @@ const updateLessonProgress = async (req, res) => {
         }
         if (lesson.isPlaceholder) {
             return res.status(400).json({
-                message: 'هذا الدرس ما زال بانتظار نشاط عبقورة أصلي ولا يمكن إرساله للإكمال بعد'
+                message: 'هذا الدرس ما زال بانتظار إعداد الشرح ورابط التطبيق العملي ولا يمكن إرساله للإكمال بعد'
             });
         }
-        if (lesson.nativeActivity?.enabled) {
-            return res.status(400).json({
-                message: 'يجب تشغيل النشاط داخل عبقورة وإرسال حل صحيح قبل طلب الإكمال'
-            });
-        }
-
         const currentState = getLessonState({ lessons: course.lessons, lesson, progress });
         if (currentState === 'locked') {
             return res.status(403).json({ message: 'لا يمكن تجاوز ترتيب الدروس' });
@@ -98,68 +91,6 @@ const updateLessonProgress = async (req, res) => {
             action: 'submitted',
             fromStatus,
             toStatus: entry.status,
-        });
-
-        return res.json({ progress, studentState: entry.status });
-    } catch (error) {
-        return res.status(500).json({ message: error.message });
-    }
-};
-
-const submitNativeActivity = async (req, res) => {
-    try {
-        const { lessonId, commands } = req.body;
-        if (req.user.role !== 'student') {
-            return res.status(403).json({ message: 'الطلاب فقط يمكنهم إرسال حلول الأنشطة' });
-        }
-        if (!isObjectId(lessonId)) {
-            return res.status(400).json({ message: 'معرّف الدرس غير صالح' });
-        }
-
-        const lesson = await Lesson.findById(lessonId);
-        if (!lesson) return res.status(404).json({ message: 'الدرس غير موجود' });
-
-        const [course, progress] = await Promise.all([
-            Course.findById(lesson.course).populate({ path: 'lessons', options: { sort: { order: 1 } } }),
-            Progress.findOne({ user: req.user._id, course: lesson.course }),
-        ]);
-        if (!course || !progress) {
-            return res.status(403).json({ message: 'سجّل في الدورة أولاً' });
-        }
-
-        const currentState = getLessonState({ lessons: course.lessons, lesson, progress });
-        if (currentState === 'locked') {
-            return res.status(403).json({ message: 'لا يمكن تجاوز ترتيب الدروس' });
-        }
-        if (currentState === 'completed' || currentState === 'awaiting_approval') {
-            return res.json({ progress, studentState: currentState });
-        }
-
-        const validation = validateNativeActivity(lesson.nativeActivity, commands);
-        if (!validation.valid) {
-            return res.status(400).json({ message: validation.message });
-        }
-
-        const entry = getOrCreateLessonProgress(progress, lesson._id);
-        const fromStatus = entry.status;
-        entry.status = lesson.requiresApproval ? 'awaiting_approval' : 'completed';
-        entry.submittedAt = new Date();
-        entry.updatedAt = new Date();
-        if (!lesson.requiresApproval) {
-            entry.completedAt = new Date();
-            progress.completedLessons.addToSet(lesson._id);
-        }
-        await progress.save();
-
-        await ProgressAuditLog.create({
-            actor: req.user._id,
-            student: req.user._id,
-            course: course._id,
-            lesson: lesson._id,
-            action: 'submitted',
-            fromStatus,
-            toStatus: entry.status,
-            note: 'تم التحقق من حل نشاط عبقورة على الخادم',
         });
 
         return res.json({ progress, studentState: entry.status });
@@ -296,7 +227,6 @@ const checkOrCreateCertificate = async (req, res) => {
 module.exports = {
     getProgressByCourse,
     updateLessonProgress,
-    submitNativeActivity,
     updateQuizProgress,
     completeCourse,
     getStudentProgress,

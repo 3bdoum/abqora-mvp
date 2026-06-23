@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 
-const nativeActivitySchema = new mongoose.Schema({
-    enabled: { type: Boolean, default: false },
-    kind: { type: String, enum: ['sequence_maze'] },
-    version: { type: Number, default: 1 },
-    config: { type: mongoose.Schema.Types.Mixed, default: {} },
+const explanationVideoSchema = new mongoose.Schema({
+    title: { type: String, trim: true },
+    url: { type: String, trim: true, required: true },
+    description: { type: String, trim: true },
+    duration: { type: String, trim: true },
 }, { _id: false });
 
 const lessonSchema = new mongoose.Schema({
@@ -12,6 +12,7 @@ const lessonSchema = new mongoose.Schema({
     title: { type: String, required: true },
     content: { type: String, required: true },
     videoUrl: { type: String },
+    videoUrls: { type: [explanationVideoSchema], default: [] },
     codeOrgLink: { type: String },
     course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
     order: { type: Number, default: 0 },
@@ -22,7 +23,6 @@ const lessonSchema = new mongoose.Schema({
     },
     requiresApproval: { type: Boolean, default: true },
     isPlaceholder: { type: Boolean, default: false },
-    nativeActivity: { type: nativeActivitySchema, default: undefined },
     createdAt: { type: Date, default: Date.now },
 });
 

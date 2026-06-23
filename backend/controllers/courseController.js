@@ -69,8 +69,8 @@ const getCourseById = async (req, res) => {
             if (req.user.role === 'student' && studentState === 'locked') {
                 data.content = '';
                 data.videoUrl = '';
+                data.videoUrls = [];
                 data.codeOrgLink = '';
-                data.nativeActivity = undefined;
             }
             return data;
         });

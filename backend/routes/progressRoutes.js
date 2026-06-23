@@ -1,11 +1,10 @@
 const express = require('express');
-const { getProgressByCourse, updateLessonProgress, submitNativeActivity, updateQuizProgress, completeCourse, getStudentProgress, checkOrCreateCertificate } = require('../controllers/progressController');
+const { getProgressByCourse, updateLessonProgress, updateQuizProgress, completeCourse, getStudentProgress, checkOrCreateCertificate } = require('../controllers/progressController');
 const protect = require('../middleware/authMiddleware');
 
 const router = express.Router();
 router.get('/:courseId', protect, getProgressByCourse);
 router.post('/lesson', protect, updateLessonProgress);
-router.post('/native-activity', protect, submitNativeActivity);
 router.post('/quiz', protect, updateQuizProgress);
 router.post('/complete', protect, completeCourse);
 router.get('/student/:studentId/:courseId', protect, getStudentProgress);

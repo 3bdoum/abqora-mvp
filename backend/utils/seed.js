@@ -44,15 +44,16 @@ const upsertCourse = async (courseData, lessonsData, legacyTitles = []) => {
             title: lessonData.title,
             content: lessonData.content,
             videoUrl: lessonData.videoUrl || '',
+            videoUrls: lessonData.videoUrls || [],
             codeOrgLink: lessonData.codeOrgLink || '',
             course: course._id,
             order: lessonData.order,
             type: lessonData.type || 'activity',
             requiresApproval: lessonData.requiresApproval !== false,
             isPlaceholder: Boolean(lessonData.isPlaceholder),
-            nativeActivity: lessonData.nativeActivity || undefined,
         });
         await lesson.save();
+        await Lesson.collection.updateOne({ _id: lesson._id }, { $unset: { nativeActivity: '' } });
         lessonIds.push(lesson._id);
 
         if (lessonData.quiz) {

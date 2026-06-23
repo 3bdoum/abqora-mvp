@@ -4,6 +4,22 @@ const Progress = require('../models/progressModel');
 const { getLessonState, getOrCreateLessonProgress } = require('../utils/progressAccess');
 const { isObjectId, cleanText, isStudentActivityUrl, isSafeExternalUrl } = require('../utils/validation');
 
+const sanitizeExplanationVideos = (value) => {
+    if (!Array.isArray(value)) return [];
+
+    return value.slice(0, 12)
+        .map((item) => {
+            const source = typeof item === 'string' ? { url: item } : (item || {});
+            return {
+                title: cleanText(source.title, 160),
+                url: cleanText(source.url, 500),
+                description: cleanText(source.description, 700),
+                duration: cleanText(source.duration, 40),
+            };
+        })
+        .filter((video) => video.url);
+};
+
 const getLessonsByCourse = async (req, res) => {
     try {
         if (!isObjectId(req.params.courseId)) {
@@ -22,8 +38,8 @@ const getLessonsByCourse = async (req, res) => {
             if (req.user.role === 'student' && studentState === 'locked') {
                 data.content = '';
                 data.videoUrl = '';
+                data.videoUrls = [];
                 data.codeOrgLink = '';
-                data.nativeActivity = undefined;
             }
             return data;
         }));
@@ -92,11 +108,19 @@ const createLesson = async (req, res) => {
 
         const codeOrgLink = cleanText(req.body.codeOrgLink, 500);
         const videoUrl = cleanText(req.body.videoUrl, 500);
+        const submittedVideos = sanitizeExplanationVideos(req.body.videoUrls);
+        const videoUrls = submittedVideos.length
+            ? submittedVideos
+            : (videoUrl ? [{ title: 'الشرح المرئي', url: videoUrl, description: '', duration: '' }] : []);
+
         if (codeOrgLink && !isStudentActivityUrl(codeOrgLink)) {
             return res.status(400).json({ message: 'رابط النشاط غير آمن أو غير مخصص للطلاب' });
         }
         if (videoUrl && !isSafeExternalUrl(videoUrl, ['youtube.com', 'youtu.be'])) {
             return res.status(400).json({ message: 'رابط الفيديو غير صالح' });
+        }
+        if (videoUrls.some((video) => !isSafeExternalUrl(video.url, ['youtube.com', 'youtu.be']))) {
+            return res.status(400).json({ message: 'روابط فيديو الشرح يجب أن تكون روابط YouTube آمنة' });
         }
 
         const lesson = await Lesson.create({
@@ -104,6 +128,7 @@ const createLesson = async (req, res) => {
             title,
             content,
             videoUrl,
+            videoUrls,
             codeOrgLink,
             course,
             order,

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
-import BlockActivityPlayer from '../../components/BlockActivityPlayer';
 import API from '../../utils/api';
 
 const getEmbedUrl = (url) => {
@@ -47,8 +46,8 @@ const getExternalVideoUrl = (url) => {
 
 const lessonStatusLabels = {
     locked: ['مقفل', '🔒', 'لا يمكن فتح هذا الدرس قبل إكمال السابق.'],
-    available: ['متاح الآن', '▶', 'ابدأ النشاط عندما تكون جاهزاً.'],
-    in_progress: ['قيد التعلم', '◐', 'أكمل النشاط ثم أرسله للمراجعة.'],
+    available: ['متاح الآن', '▶', 'شاهد الشرح ثم افتح التطبيق العملي.'],
+    in_progress: ['قيد التعلم', '◐', 'شاهد الشرح وطبّق على Code.org ثم أرسل الدرس للمراجعة.'],
     awaiting_approval: ['بانتظار المعلم', '⏳', 'تم الإرسال وينتظر اعتماد المعلم.'],
     completed: ['مكتمل', '✓', 'أحسنت! يمكنك مراجعة الدرس متى شئت.'],
 };
@@ -118,7 +117,7 @@ export default function LessonPage() {
                 lessonId: lesson._id
             });
             setLessonState(data.studentState || 'awaiting_approval');
-            setSubMessage('تم تسجيل انتهائك من النشاط. الدرس الآن بانتظار موافقة المعلم.');
+            setSubMessage('تم تسجيل انتهائك من التطبيق العملي. الدرس الآن بانتظار موافقة المعلم.');
         } catch (err) {
             setSubError(err.response?.data?.message || 'تعذر إرسال طلب الإكمال');
         }
@@ -150,9 +149,13 @@ export default function LessonPage() {
         }
     };
 
-    const videoUrl = lesson?.videoUrl?.trim() || '';
-    const embedUrl = getEmbedUrl(videoUrl);
-    const externalVideoUrl = getExternalVideoUrl(videoUrl);
+    const explanationVideos = lesson
+        ? (lesson.videoUrls?.length
+            ? lesson.videoUrls
+            : lesson.videoUrl
+                ? [{ title: 'الشرح المرئي', url: lesson.videoUrl, description: '' }]
+                : [])
+        : [];
     const [statusLabel, statusIcon, statusHelp] = lessonStatusLabels[lessonState] || lessonStatusLabels.in_progress;
 
     return (
@@ -185,106 +188,77 @@ export default function LessonPage() {
                             </aside>
                         </div>
 
-                        {/* YouTube Tutorial Video */}
-                        {videoUrl && (
-                            <div
-                                className="card"
-                                style={{
-                                    marginTop: '32px'
-                                }}
-                            >
-                                <h2 style={{ marginBottom: '20px' }}>
-                                    الشرح المرئي باللغة العربية 📺
-                                </h2>
-
-                                {embedUrl ? (
-                                    <>
-                                        <div
-                                            style={{
-                                                position: 'relative',
-                                                width: '100%',
-                                                paddingBottom: '56.25%',
-                                                height: 0,
-                                                overflow: 'hidden',
-                                                borderRadius: '12px',
-                                                background: '#000'
-                                            }}
-                                        >
-                                            <iframe
-                                                src={embedUrl}
-                                                title={lesson.title}
-                                                loading="lazy"
-                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                allowFullScreen
-                                                referrerPolicy="strict-origin-when-cross-origin"
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: 0,
-                                                    left: 0,
-                                                    width: '100%',
-                                                    height: '100%',
-                                                    border: 'none',
-                                                    borderRadius: '12px'
-                                                }}
-                                            />
-                                        </div>
-                                        {externalVideoUrl && (
-                                            <p style={{ marginTop: '12px', textAlign: 'center' }}>
-                                                إذا لم يعمل الفيديو داخل الصفحة،{' '}
-                                                <a href={externalVideoUrl} target="_blank" rel="noopener noreferrer">
-                                                    افتحه في نافذة جديدة
-                                                </a>
-                                            </p>
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="error-box">
-                                        رابط الفيديو غير صالح أو لا يمكن عرضه داخل الصفحة.
-                                        {externalVideoUrl && (
-                                            <p style={{ marginTop: '8px' }}>
-                                                <a href={externalVideoUrl} target="_blank" rel="noopener noreferrer">
-                                                    فتح الرابط في نافذة جديدة
-                                                </a>
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
+                        <div className="card lesson-video-section">
+                            <div className="lesson-section-heading">
+                                <span className="step-pill">1</span>
+                                <div>
+                                    <h2>شاهد الشرح أولاً 📺</h2>
+                                    <p>قد يحتوي الدرس على فيديو واحد أو أكثر. الهدف أن يفهم الطالب التمرين قبل فتح التطبيق العملي.</p>
+                                </div>
                             </div>
-                        )}
 
-                        {lesson.nativeActivity?.enabled && (
-                            <BlockActivityPlayer
-                                lessonId={lesson._id}
-                                activity={lesson.nativeActivity}
-                                lessonState={lessonState}
-                                onSubmitted={(state) => {
-                                    setLessonState(state || 'awaiting_approval');
-                                    setSubMessage('تم التحقق من الحل. الدرس الآن بانتظار موافقة المعلم.');
-                                    setSubError('');
-                                }}
-                            />
-                        )}
+                            {explanationVideos.length > 0 ? (
+                                <div className="lesson-video-list">
+                                    {explanationVideos.map((video, index) => {
+                                        const videoUrl = video.url?.trim() || '';
+                                        const embedUrl = getEmbedUrl(videoUrl);
+                                        const externalVideoUrl = getExternalVideoUrl(videoUrl);
+                                        return (
+                                            <article className="lesson-video-card" key={`${videoUrl}-${index}`}>
+                                                <div className="lesson-video-meta">
+                                                    <span className="tag">فيديو {index + 1}</span>
+                                                    <h3>{video.title || `شرح الدرس ${index + 1}`}</h3>
+                                                    {video.description && <p>{video.description}</p>}
+                                                    {video.duration && <small>المدة التقريبية: {video.duration}</small>}
+                                                </div>
 
-                        {lesson.isPlaceholder && !lesson.nativeActivity?.enabled && (
-                            <div className="card placeholder-lesson-card">
-                                <h2>النشاط داخل عبقورة قيد التحضير 🧩</h2>
-                                <p>
-                                    هذا الدرس موجود في تسلسل الدورة حتى نحافظ على بنية المسار وعدد الدروس،
-                                    لكننا لم نضع له بعد نشاطاً أصلياً داخل عبقورة. لن نفتح رابط Code.org مباشر
-                                    للطالب، ولن نحتسب الدرس كمكتمل حتى يصبح له نشاط آمن داخل المنصة.
-                                </p>
-                            </div>
-                        )}
+                                                {embedUrl ? (
+                                                    <div className="video-frame">
+                                                        <iframe
+                                                            src={embedUrl}
+                                                            title={video.title || lesson.title}
+                                                            loading="lazy"
+                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                            allowFullScreen
+                                                            referrerPolicy="strict-origin-when-cross-origin"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="error-box compact-alert">
+                                                        رابط الفيديو غير صالح أو لا يمكن عرضه داخل الصفحة.
+                                                        {externalVideoUrl && (
+                                                            <p style={{ marginTop: '8px' }}>
+                                                                <a href={externalVideoUrl} target="_blank" rel="noopener noreferrer">
+                                                                    فتح الرابط في نافذة جديدة
+                                                                </a>
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </article>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="lesson-video-empty">
+                                    <strong>لم تتم إضافة فيديو الشرح لهذا الدرس بعد.</strong>
+                                    <p>يمكن إضافة رابط YouTube واحد أو أكثر لهذا الدرس من بيانات الدورة. بعد إضافة الفيديو سيظهر هنا قبل التطبيق العملي.</p>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Code.org Activity Redirect */}
-                        {lesson.codeOrgLink && !lesson.nativeActivity?.enabled && !lesson.isPlaceholder && (
-                            <div className="card" style={{ marginTop: '32px', textAlign: 'center', background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', borderColor: '#7dd3fc' }}>
-                                <h2>التطبيق العملي على منصة Code.org 🎮</h2>
-                                <p style={{ margin: '12px 0 24px' }}>
-                                    افتح منصة العملي لحل اللغز المطلوب ثم عد إلى هنا لإكمال الدرس!
-                                </p>
+                        {lesson.codeOrgLink && !lesson.isPlaceholder && (
+                            <div className="card codeorg-practice-card">
+                                <div className="lesson-section-heading">
+                                    <span className="step-pill">2</span>
+                                    <div>
+                                        <h2>طبّق على Code.org 🎮</h2>
+                                        <p>بعد مشاهدة الشرح، افتح النشاط العملي العام في Code.org. عند الانتهاء عد إلى عبقورة وأرسل الدرس للمراجعة.</p>
+                                    </div>
+                                </div>
                                 <a href={lesson.codeOrgLink} target="_blank" rel="noopener noreferrer" className="button" style={{ fontSize: '1.1rem' }}>
-                                    افتح منصة الألعاب التطبيقية 🔗
+                                    افتح تطبيق Code.org 🔗
                                 </a>
                             </div>
                         )}
@@ -346,7 +320,7 @@ export default function LessonPage() {
                         <div className="card completion-card">
                             <h2>خطوة التقييم والاكتمال ✍️</h2>
                             <p>
-                                عند انتهائك من مشاهدة الشرح والتطبيق العملي، قم بتسجيل اكتمال الدرس لتفعيل اختبار التقدم.
+                                عند انتهائك من مشاهدة الشرح والتطبيق العملي على Code.org، أرسل الدرس للمراجعة.
                             </p>
 
                             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -358,17 +332,13 @@ export default function LessonPage() {
                                     <span className="tag status-completed" style={{ fontSize: '1rem', padding: '10px 20px' }}>
                                         الدرس مكتمل بنجاح!
                                     </span>
-                                ) : lesson.nativeActivity?.enabled ? (
-                                    <span className="tag" style={{ fontSize: '1rem', padding: '10px 20px' }}>
-                                        أكمل تحدّي الروبوت لإرسال الحل
-                                    </span>
                                 ) : lesson.isPlaceholder ? (
                                     <span className="tag status-locked" style={{ fontSize: '1rem', padding: '10px 20px' }}>
                                         الدرس غير متاح بعد داخل عبقورة
                                     </span>
                                 ) : (
                                     <button onClick={markLessonComplete} className="button">
-                                        انتهيت من النشاط — إرسال للمراجعة ✓
+                                        انتهيت من التطبيق — إرسال للمراجعة ✓
                                     </button>
                                 )}
 
