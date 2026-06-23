@@ -49,6 +49,14 @@ cd backend
 PORT=5004 npm run dev
 ```
 
+For local frontend login, make sure `frontend/.env.local` points to the port printed by the backend:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5001/api
+```
+
+On macOS, another system process may already use port 5000. In that case the backend will usually start on 5001, so keep the frontend API URL on 5001 or set `PORT=5001` when starting the backend.
+
 ## Public deployment
 
 ### Frontend: GitHub Pages

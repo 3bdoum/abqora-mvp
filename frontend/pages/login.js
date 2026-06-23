@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import API from '../utils/api';
+import API, { API_BASE_URL } from '../utils/api';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
@@ -45,7 +45,11 @@ export default function Login() {
             else if (data.role === 'parent') router.push('/parent/dashboard');
             else router.push('/dashboard');
         } catch (error) {
-            setMessage(error.response?.data?.message || 'حدث خطأ أثناء تسجيل الدخول. يرجى التحقق من البيانات.');
+            if (!error.response) {
+                setMessage(`تعذر الاتصال بخادم عبقورا. تأكد أن backend يعمل على ${API_BASE_URL}`);
+            } else {
+                setMessage(error.response?.data?.message || 'حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.');
+            }
         } finally {
             setLoading(false);
         }
