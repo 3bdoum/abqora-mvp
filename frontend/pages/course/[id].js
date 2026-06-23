@@ -4,98 +4,150 @@ import Link from 'next/link';
 import Layout from '../../components/Layout';
 import API from '../../utils/api';
 
+const stateLabels = {
+    locked: ['مقفل', '🔒'],
+    available: ['متاح', '▶'],
+    in_progress: ['قيد التعلم', '◐'],
+    awaiting_approval: ['بانتظار موافقة المعلم', '⏳'],
+    completed: ['مكتمل', '✓'],
+};
+
+const typeLabels = {
+    activity: 'نشاط تطبيقي',
+    video: 'فيديو',
+    project: 'مشروع',
+    quiz: 'اختبار',
+    mixed: 'درس متنوع',
+};
+
 export default function CoursePage() {
     const router = useRouter();
     const { id } = router.query;
     const [course, setCourse] = useState(null);
-    const [lessons, setLessons] = useState([]);
-    const [progress, setProgress] = useState(null);
     const [message, setMessage] = useState('');
+    const [enrolling, setEnrolling] = useState(false);
+    const [role, setRole] = useState('');
+
+    const fetchCourse = async () => {
+        try {
+            const { data } = await API.get(`/courses/${id}`);
+            setCourse(data);
+        } catch (err) {
+            setMessage(err.response?.data?.message || 'تعذر تحميل بيانات الدورة');
+        }
+    };
 
     useEffect(() => {
         const token = localStorage.getItem('token');
-        if (!token) {
-            router.push('/login');
-            return;
-        }
-        if (!id) return;
-
-        const fetchCourseData = async () => {
-            try {
-                const courseRes = await API.get(`/courses/${id}`);
-                setCourse(courseRes.data);
-                setLessons(courseRes.data.lessons || []);
-
-                const progressRes = await API.get(`/progress/${id}`);
-                setProgress(progressRes.data);
-            } catch (err) {
-                setMessage('تعذر تحميل بيانات الدورة');
-            }
-        };
-
-        fetchCourseData();
+        if (!token) return void router.push('/login');
+        setRole(localStorage.getItem('userRole') || '');
+        if (id) fetchCourse();
     }, [id]);
 
-    const isLessonCompleted = (lessonId) => {
-        if (!progress || !progress.completedLessons) return false;
-        return progress.completedLessons.some(l => (l._id || l) === lessonId);
+    const enroll = async () => {
+        setEnrolling(true);
+        try {
+            await API.post(`/courses/${id}/enroll`);
+            await fetchCourse();
+        } catch (err) {
+            setMessage(err.response?.data?.message || 'تعذر التسجيل في الدورة');
+        } finally {
+            setEnrolling(false);
+        }
     };
+
+    const progress = course?.progress || {};
+    const nextLesson = course?.lessons?.find((lesson) => String(lesson._id) === String(progress.nextLessonId));
+    const lessonCounts = course?.lessons?.reduce((acc, lesson) => {
+        const state = lesson.studentState || 'available';
+        acc[state] = (acc[state] || 0) + 1;
+        return acc;
+    }, {}) || {};
 
     return (
         <Layout>
-            <section className="page shell rtl">
-                <Link href="/dashboard" className="button secondary" style={{ marginBottom: '20px', textDecoration: 'none', display: 'inline-flex' }}>
-                    ↩ العودة للوحة التحكم
-                </Link>
-
+            <section className="page shell rtl course-details-page">
+                <Link href="/dashboard" className="button secondary back-button">↩ العودة لدليل الدورات</Link>
                 {message && <div className="error-box">{message}</div>}
 
                 {course ? (
                     <>
-                        <div className="hero-card" style={{ textAlign: 'right', padding: '32px' }}>
-                            <h1>{course.title}</h1>
-                            <p style={{ marginTop: '12px', fontSize: '1.1rem' }}>{course.description}</p>
-                            <div style={{ marginTop: '16px' }}>
-                                <span className="tag" style={{ marginLeft: '12px' }}>اللغة: {course.language}</span>
-                                <span className="tag">المستوى: {course.level}</span>
+                        <div className="course-detail-hero">
+                            <div>
+                                <span className="eyebrow">{course.ageRange} · {course.level}</span>
+                                <h1>{course.title}</h1>
+                                <p>{course.description}</p>
+                                <div className="course-detail-tags">
+                                    <span className="tag">{course.language}</span>
+                                    <span className="tag">{course.lessonCount} درساً</span>
+                                    {course.lessons.some((lesson) => lesson.isPlaceholder) && (
+                                        <span className="tag placeholder-tag">بعض العناوين بانتظار البيانات</span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="course-overall-progress">
+                                <strong>{progress.percentage || 0}%</strong>
+                                <span>التقدم الكلي</span>
+                                <div className="progress-bar-container">
+                                    <div className="progress-bar" style={{ width: `${progress.percentage || 0}%` }} />
+                                </div>
+                                {progress.enrolled && nextLesson && (
+                                    <Link href={{ pathname: '/lesson', query: { id: nextLesson._id } }} className="button">
+                                        متابعة: الدرس {nextLesson.order}
+                                    </Link>
+                                )}
+                                {!progress.enrolled && role === 'student' && (
+                                    <button className="button" onClick={enroll} disabled={enrolling}>
+                                        {enrolling ? 'جاري التسجيل...' : 'سجّل وابدأ الدرس الأول'}
+                                    </button>
+                                )}
                             </div>
                         </div>
 
-                        <h2>خريطة الطريق البرمجية 🗺️</h2>
-                        <p style={{ marginBottom: '24px' }}>أكمل الدروس خطوة بخطوة لتحصل على شهادتك المعتمدة.</p>
+                        <div className="lesson-map-heading">
+                            <div><span className="eyebrow">خريطة الدورة</span><h2>الدروس بالترتيب</h2></div>
+                            <p>إكمال كل درس وموافقة المعلم يفتحان الدرس التالي تلقائياً.</p>
+                        </div>
 
-                        <div className="roadmap">
-                            {lessons.map((lesson, index) => {
-                                const completed = isLessonCompleted(lesson._id);
+                        <div className="lesson-state-legend" aria-label="ملخص حالات الدروس">
+                            <span><b className="legend-dot available" /> متاح: {lessonCounts.available || 0}</span>
+                            <span><b className="legend-dot in-progress" /> قيد التعلم: {lessonCounts.in_progress || 0}</span>
+                            <span><b className="legend-dot pending" /> بانتظار المعلم: {lessonCounts.awaiting_approval || 0}</span>
+                            <span><b className="legend-dot complete" /> مكتمل: {lessonCounts.completed || 0}</span>
+                            <span><b className="legend-dot locked" /> مقفل: {lessonCounts.locked || 0}</span>
+                        </div>
+
+                        <div className="lesson-sequence">
+                            {course.lessons.map((lesson) => {
+                                const state = lesson.studentState || 'available';
+                                const [label, icon] = stateLabels[state] || stateLabels.available;
+                                const locked = state === 'locked';
+                                const unavailablePlaceholder = lesson.isPlaceholder && !locked;
                                 return (
-                                    <div key={lesson._id} className="roadmap-item">
-                                        <div className="roadmap-number" style={{ background: completed ? 'var(--success-light)' : 'var(--primary-light)', color: completed ? 'var(--success)' : 'var(--primary)' }}>
-                                            {index + 1}
-                                        </div>
-                                        <div className="roadmap-content">
-                                            <h3>{lesson.title}</h3>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                                                {lesson.content.slice(0, 150)}...
-                                            </p>
-                                            <div style={{ marginTop: '12px' }}>
-                                                <Link href={{ pathname: '/lesson', query: { id: lesson._id } }} className="button small-button">
-                                                    {completed ? 'مراجعة الدرس 📖' : 'ابدأ الدرس الآن 🚀'}
-                                                </Link>
+                                    <article key={lesson.stableId || lesson._id} className={`lesson-row state-${state} ${lesson.isPlaceholder ? 'is-placeholder' : ''}`}>
+                                        <div className="lesson-order">{lesson.order}</div>
+                                        <div className="lesson-row-content">
+                                            <div className="lesson-row-title">
+                                                <h3>{lesson.title}</h3>
+                                                {lesson.isPlaceholder && <span className="placeholder-badge">قيد التأليف داخل عبقورة</span>}
+                                            </div>
+                                            <div className="lesson-row-meta">
+                                                <span>{typeLabels[lesson.type] || 'درس'}</span>
+                                                <span className={`lesson-state-badge state-${state}`}>{icon} {label}</span>
+                                                {unavailablePlaceholder && <span className="lesson-note">لا يوجد نشاط داخلي بعد</span>}
                                             </div>
                                         </div>
-                                        <div style={{ alignSelf: 'center' }}>
-                                            <span className={`roadmap-status ${completed ? 'status-completed' : 'status-pending'}`}>
-                                                {completed ? 'مكتمل ✓' : 'مستمر ⏳'}
-                                            </span>
-                                        </div>
-                                    </div>
+                                        {locked ? (
+                                            <button className="lesson-open-button locked" disabled aria-label="الدرس مقفل">🔒</button>
+                                        ) : (
+                                            <Link href={{ pathname: '/lesson', query: { id: lesson._id } }} className="lesson-open-button" aria-label={`فتح ${lesson.title}`}>←</Link>
+                                        )}
+                                    </article>
                                 );
                             })}
                         </div>
                     </>
-                ) : (
-                    <p style={{ textAlign: 'center', marginTop: '40px' }}>جاري التحميل...</p>
-                )}
+                ) : !message && <p className="loading-copy">جاري التحميل...</p>}
             </section>
         </Layout>
     );

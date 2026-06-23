@@ -2,10 +2,15 @@ const codeOrgLessonLink = (lessonNumber) =>
     `https://studio.code.org/courses/pre-express-2025/units/1/lessons/${lessonNumber}/levels/1`;
 
 const preExpressCourse = {
-    title: 'منشئ الألعاب مع Code.org',
+    slug: 'cs-fundamentals-pre-reader-express',
+    title: 'CS Fundamentals: Pre-reader Express',
     description: 'تعلم مبادئ البرمجة الأولى من خلال مسار Code.org Pre-reader Express 2025، مع شروحات عربية مبسطة وأنشطة عملية مناسبة للمبتدئين.',
     language: 'العربية',
-    level: 'مبتدئ'
+    level: 'تمهيدي',
+    ageRange: '5–8 سنوات',
+    artwork: '/images/avatar.png',
+    referenceUrl: 'https://code.org/en-US/students/elementary',
+    published: true,
 };
 
 const makeQuiz = (topic, correctIdea) => ({
@@ -135,7 +140,15 @@ const preExpressLessons = [
     }
 ];
 
+const normalizedPreExpressLessons = preExpressLessons.map((lesson) => ({
+    ...lesson,
+    stableId: `pre-express-2025-l${String(lesson.order).padStart(2, '0')}`,
+    type: [2, 4, 6].includes(lesson.order) ? 'project' : 'activity',
+    requiresApproval: true,
+    isPlaceholder: false,
+}));
+
 module.exports = {
     preExpressCourse,
-    preExpressLessons
+    preExpressLessons: normalizedPreExpressLessons
 };
