@@ -20,6 +20,8 @@ const Quiz = require('../models/quizModel');
 const Submission = require('../models/submissionModel');
 const Certificate = require('../models/certificateModel');
 const { backfillLegacyProgress, seedData } = require('../utils/seed');
+const { expressLessons } = require('../data/expressCourse');
+const { validateNativeActivity } = require('../utils/nativeActivity');
 
 let mongo;
 
@@ -70,6 +72,13 @@ const solvedCommandsTwo = [
     'turn_right', 'move_forward', 'move_forward', 'turn_left',
     'move_forward', 'move_forward', 'turn_right', 'move_forward',
     'move_forward',
+];
+
+const solvedCommandsThree = [
+    'move_forward', 'move_forward', 'turn_right', 'move_forward',
+    'turn_left', 'move_forward', 'turn_right', 'move_forward',
+    'move_forward', 'turn_left', 'move_forward', 'move_forward',
+    'turn_right', 'move_forward', 'move_forward',
 ];
 
 const tokenFor = (user) => jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -234,6 +243,21 @@ test('second native activity unlocks only after the first approved lesson', asyn
     ]);
 });
 
+test('express native lesson definitions have valid server-side sample solutions', () => {
+    const expectedSolutions = new Map([
+        ['express-2025-l01', solvedCommands],
+        ['express-2025-l02', solvedCommandsTwo],
+        ['express-2025-l03', solvedCommandsThree],
+    ]);
+
+    for (const [stableId, commands] of expectedSolutions) {
+        const lesson = expressLessons.find((item) => item.stableId === stableId);
+        assert.equal(lesson?.nativeActivity?.enabled, true, `${stableId} should be native`);
+        const result = validateNativeActivity(lesson.nativeActivity, commands);
+        assert.equal(result.valid, true, `${stableId} sample solution should be valid`);
+    }
+});
+
 test('student cannot approve their own submission', async () => {
     const data = await setupScenario();
     const response = await request(app)
@@ -320,7 +344,8 @@ test('seed scripts are idempotent', async () => {
 
     const firstNativeLesson = await Lesson.findOne({ stableId: 'express-2025-l01' });
     const secondNativeLesson = await Lesson.findOne({ stableId: 'express-2025-l02' });
-    const firstPlaceholder = await Lesson.findOne({ stableId: 'express-2025-l03' });
+    const thirdNativeLesson = await Lesson.findOne({ stableId: 'express-2025-l03' });
+    const firstPlaceholder = await Lesson.findOne({ stableId: 'express-2025-l04' });
 
     assert.equal(firstNativeLesson.nativeActivity.enabled, true);
     assert.equal(firstNativeLesson.isPlaceholder, false);
@@ -328,6 +353,9 @@ test('seed scripts are idempotent', async () => {
     assert.equal(secondNativeLesson.nativeActivity.enabled, true);
     assert.equal(secondNativeLesson.isPlaceholder, false);
     assert.equal(secondNativeLesson.codeOrgLink, '');
+    assert.equal(thirdNativeLesson.nativeActivity.enabled, true);
+    assert.equal(thirdNativeLesson.isPlaceholder, false);
+    assert.equal(thirdNativeLesson.codeOrgLink, '');
     assert.equal(firstPlaceholder.isPlaceholder, true);
     assert.equal(firstPlaceholder.codeOrgLink, '');
 });

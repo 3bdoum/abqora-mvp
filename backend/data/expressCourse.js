@@ -69,6 +69,33 @@ const nativeLessonData = {
             maxBlocks: 16,
         }),
     },
+    3: {
+        stableId: 'express-2025-l03',
+        title: 'الدرس 3: قراءة المسار قبل البرمجة',
+        content: 'قبل أن تضيف الأوامر، تتبع الطريق بعينيك أولاً. في هذا النشاط يبدأ الروبوت من الجهة المقابلة ويحتاج إلى سلسلة دقيقة من التقدم والالتفاف حتى يصل إلى النجمة.',
+        nativeActivity: sequenceMaze({
+            title: 'خطط للمسار ثم برمجه',
+            instructions: 'ابدأ بقراءة الطريق من نقطة البداية إلى النجمة، ثم حوّل الخطة إلى أوامر متصلة في سلسلة واحدة.',
+            rows: 6,
+            columns: 6,
+            start: { row: 5, column: 5, direction: 'west' },
+            goal: { row: 0, column: 0 },
+            validCells: [
+                { row: 5, column: 5 },
+                { row: 5, column: 4 },
+                { row: 5, column: 3 },
+                { row: 4, column: 3 },
+                { row: 4, column: 2 },
+                { row: 3, column: 2 },
+                { row: 2, column: 2 },
+                { row: 2, column: 1 },
+                { row: 2, column: 0 },
+                { row: 1, column: 0 },
+                { row: 0, column: 0 },
+            ],
+            maxBlocks: 18,
+        }),
+    },
 };
 
 const expressLessons = Array.from({ length: 31 }, (_, index) => {
