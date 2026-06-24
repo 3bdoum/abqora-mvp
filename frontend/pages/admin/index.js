@@ -20,6 +20,17 @@ const lessonHasVideos = (lesson) => Boolean(
     lesson?.videoUrls?.some((video) => video.url?.trim()) || lesson?.videoUrl?.trim()
 );
 
+const lessonHasCodeOrgLink = (lesson) => Boolean(lesson?.codeOrgLink?.trim());
+const lessonHasQuiz = (lesson) => Boolean(lesson?.hasQuiz);
+
+const getLessonReadinessIssues = (lesson) => {
+    const issues = [];
+    if (!lessonHasVideos(lesson)) issues.push({ key: 'video', label: 'ينقصه فيديو شرح' });
+    if (!lessonHasCodeOrgLink(lesson)) issues.push({ key: 'codeorg', label: 'ينقصه رابط Code.org' });
+    if (!lessonHasQuiz(lesson)) issues.push({ key: 'quiz', label: 'ينقصه اختبار' });
+    return issues;
+};
+
 const getYoutubeEmbedUrl = (url) => {
     if (!url) return '';
 
@@ -64,6 +75,9 @@ export default function AdminDashboard() {
     const [videoRows, setVideoRows] = useState([emptyVideoRow()]);
     const [lessonManagerLoading, setLessonManagerLoading] = useState(false);
     const [savingLesson, setSavingLesson] = useState(false);
+    const [lessonsByCourse, setLessonsByCourse] = useState({});
+    const [readinessCourseFilter, setReadinessCourseFilter] = useState('all');
+    const [readinessStatusFilter, setReadinessStatusFilter] = useState('all');
 
     // Review submission state
     const [feedbacks, setFeedbacks] = useState({});
@@ -124,6 +138,7 @@ export default function AdminDashboard() {
             const { data } = await API.get(`/lessons/course/${courseId}`);
             const sortedLessons = [...data].sort((a, b) => a.order - b.order);
             setCourseLessons(sortedLessons);
+            setLessonsByCourse((current) => ({ ...current, [courseId]: sortedLessons }));
             const lessonToSelect = sortedLessons.find((lesson) => lesson._id === preferredLessonId)
                 || sortedLessons.find((lesson) => lesson._id === selectedLessonId)
                 || sortedLessons[0];
@@ -139,6 +154,20 @@ export default function AdminDashboard() {
         }
     };
 
+    const fetchAllCourseLessons = async (courseList) => {
+        const lessonEntries = await Promise.all(courseList.map(async (course) => {
+            try {
+                const { data } = await API.get(`/lessons/course/${course._id}`);
+                return [course._id, [...data].sort((a, b) => a.order - b.order)];
+            } catch {
+                return [course._id, []];
+            }
+        }));
+        const lessonMap = Object.fromEntries(lessonEntries);
+        setLessonsByCourse(lessonMap);
+        return lessonMap;
+    };
+
     const fetchData = async () => {
         try {
             const subRes = await API.get('/submissions');
@@ -148,10 +177,15 @@ export default function AdminDashboard() {
             setCourses(coursesRes.data);
             const firstCourseId = coursesRes.data[0]?._id || '';
             const courseIdForManager = selectedManageCourseId || selectedCourseId || firstCourseId;
+            const lessonMap = await fetchAllCourseLessons(coursesRes.data);
             if (firstCourseId) {
                 setSelectedCourseId((current) => current || firstCourseId);
                 setSelectedManageCourseId((current) => current || courseIdForManager);
-                await fetchLessonsForCourse(courseIdForManager, selectedLessonId);
+                const selectedLessons = lessonMap[courseIdForManager] || [];
+                setCourseLessons(selectedLessons);
+                const lessonToSelect = selectedLessons.find((lesson) => lesson._id === selectedLessonId)
+                    || selectedLessons[0];
+                selectLessonForEditing(lessonToSelect);
             }
         } catch (err) {
             setMessage('تعذر تحميل البيانات للمشرف');
@@ -259,6 +293,21 @@ export default function AdminDashboard() {
         }
     };
 
+    const jumpToLessonEditor = async (courseId, lessonId) => {
+        setSelectedManageCourseId(courseId);
+        const lessons = lessonsByCourse[courseId]?.length
+            ? lessonsByCourse[courseId]
+            : await fetchLessonsForCourse(courseId, lessonId);
+        setCourseLessons(lessons);
+        selectLessonForEditing(lessons.find((lesson) => lesson._id === lessonId) || lessons[0]);
+        setTimeout(() => {
+            document.getElementById('admin-lesson-video-manager')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }, 80);
+    };
+
     const handleReview = async (subId, status) => {
         const feedbackText = feedbacks[subId] || '';
         try {
@@ -279,6 +328,46 @@ export default function AdminDashboard() {
             [subId]: val
         });
     };
+
+    const readinessRows = courses.flatMap((course) => (
+        (lessonsByCourse[course._id] || []).map((lesson) => ({
+            course,
+            lesson,
+            issues: getLessonReadinessIssues(lesson),
+        }))
+    ));
+    const readinessStats = {
+        courses: courses.length,
+        lessons: readinessRows.length,
+        withVideos: readinessRows.filter(({ lesson }) => lessonHasVideos(lesson)).length,
+        missingVideos: readinessRows.filter(({ lesson }) => !lessonHasVideos(lesson)).length,
+        missingCodeOrg: readinessRows.filter(({ lesson }) => !lessonHasCodeOrgLink(lesson)).length,
+        missingQuizzes: readinessRows.filter(({ lesson }) => !lessonHasQuiz(lesson)).length,
+        ready: readinessRows.filter(({ issues }) => issues.length === 0).length,
+    };
+    readinessStats.percentage = readinessStats.lessons
+        ? Math.round((readinessStats.ready / readinessStats.lessons) * 100)
+        : 0;
+
+    const courseReadiness = courses.map((course) => {
+        const lessons = lessonsByCourse[course._id] || [];
+        const readyLessons = lessons.filter((lesson) => getLessonReadinessIssues(lesson).length === 0).length;
+        return {
+            course,
+            total: lessons.length,
+            ready: readyLessons,
+            percentage: lessons.length ? Math.round((readyLessons / lessons.length) * 100) : 0,
+        };
+    });
+
+    const filteredReadinessRows = readinessRows.filter(({ course, lesson, issues }) => {
+        if (readinessCourseFilter !== 'all' && course._id !== readinessCourseFilter) return false;
+        if (readinessStatusFilter === 'ready') return issues.length === 0;
+        if (readinessStatusFilter === 'missing-video') return !lessonHasVideos(lesson);
+        if (readinessStatusFilter === 'missing-codeorg') return !lessonHasCodeOrgLink(lesson);
+        if (readinessStatusFilter === 'missing-quiz') return !lessonHasQuiz(lesson);
+        return true;
+    });
 
     const selectedLesson = courseLessons.find((lesson) => lesson._id === selectedLessonId);
     const missingVideoCount = courseLessons.filter((lesson) => !lessonHasVideos(lesson)).length;
@@ -390,6 +479,108 @@ export default function AdminDashboard() {
                 {/* Curriculum Tab */}
                 {activeTab === 'curriculum' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', alignItems: 'start' }}>
+                        {/* Content Readiness Dashboard */}
+                        <div className="card content-readiness-dashboard">
+                            <div className="readiness-hero">
+                                <div>
+                                    <span className="eyebrow">جاهزية المحتوى</span>
+                                    <h2>لوحة متابعة الدروس قبل نشرها للطلاب ✅</h2>
+                                    <p>اعرف بسرعة ما ينقص كل درس: فيديو الشرح، رابط Code.org، أو الاختبار. ثم انتقل مباشرة لتعديل الدرس.</p>
+                                </div>
+                                <div className="readiness-score">
+                                    <strong>{readinessStats.percentage}%</strong>
+                                    <span>جاهزية عامة</span>
+                                    <div className="progress-bar-container">
+                                        <div className="progress-bar" style={{ width: `${readinessStats.percentage}%` }} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="readiness-stat-grid">
+                                <div><span>📚</span><strong>{readinessStats.courses}</strong><p>دورات</p></div>
+                                <div><span>🧩</span><strong>{readinessStats.lessons}</strong><p>دروس</p></div>
+                                <div><span>🎬</span><strong>{readinessStats.withVideos}</strong><p>بها فيديو</p></div>
+                                <div className={readinessStats.missingVideos ? 'needs-work' : 'is-ready'}><span>⚠️</span><strong>{readinessStats.missingVideos}</strong><p>بلا فيديو</p></div>
+                                <div className={readinessStats.missingCodeOrg ? 'needs-work' : 'is-ready'}><span>🔗</span><strong>{readinessStats.missingCodeOrg}</strong><p>بلا رابط Code.org</p></div>
+                                <div className={readinessStats.missingQuizzes ? 'needs-work' : 'is-ready'}><span>✍️</span><strong>{readinessStats.missingQuizzes}</strong><p>بلا اختبار</p></div>
+                            </div>
+
+                            <div className="course-readiness-grid">
+                                {courseReadiness.map(({ course, total, ready, percentage }) => (
+                                    <div key={course._id} className="course-readiness-card">
+                                        <div>
+                                            <strong>{course.title}</strong>
+                                            <span>{ready} من {total} دروس جاهزة</span>
+                                        </div>
+                                        <b>{percentage}%</b>
+                                        <div className="progress-bar-container">
+                                            <div className="progress-bar" style={{ width: `${percentage}%` }} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="readiness-toolbar">
+                                <label>
+                                    الدورة
+                                    <select value={readinessCourseFilter} onChange={(e) => setReadinessCourseFilter(e.target.value)}>
+                                        <option value="all">كل الدورات</option>
+                                        {courses.map((course) => (
+                                            <option key={course._id} value={course._id}>{course.title}</option>
+                                        ))}
+                                    </select>
+                                </label>
+
+                                <label>
+                                    الحالة
+                                    <select value={readinessStatusFilter} onChange={(e) => setReadinessStatusFilter(e.target.value)}>
+                                        <option value="all">كل الدروس</option>
+                                        <option value="ready">جاهزة بالكامل</option>
+                                        <option value="missing-video">ينقصها فيديو</option>
+                                        <option value="missing-codeorg">ينقصها رابط Code.org</option>
+                                        <option value="missing-quiz">ينقصها اختبار</option>
+                                    </select>
+                                </label>
+                            </div>
+
+                            <div className="readiness-list">
+                                {filteredReadinessRows.length === 0 ? (
+                                    <div className="lesson-video-empty">
+                                        <strong>لا توجد دروس بهذا الفلتر.</strong>
+                                        <p>جرّب فلتر مختلف أو أضف دروساً للدورة أولاً.</p>
+                                    </div>
+                                ) : filteredReadinessRows.map(({ course, lesson, issues }) => (
+                                    <article className={`readiness-row ${issues.length ? 'needs-work' : 'is-ready'}`} key={`${course._id}-${lesson._id}`}>
+                                        <div className="readiness-row-main">
+                                            <span className="tag">{course.title}</span>
+                                            <h3>درس {lesson.order}: {lesson.title}</h3>
+                                            <div className="readiness-badges">
+                                                {lessonHasVideos(lesson) ? <span className="ready-video-badge">✓ فيديو</span> : <span className="missing-video-badge">بلا فيديو</span>}
+                                                {lessonHasCodeOrgLink(lesson) ? <span className="ready-video-badge">✓ Code.org</span> : <span className="missing-video-badge">بلا رابط</span>}
+                                                {lessonHasQuiz(lesson) ? <span className="ready-video-badge">✓ اختبار</span> : <span className="missing-video-badge">بلا اختبار</span>}
+                                            </div>
+                                        </div>
+
+                                        <div className="readiness-row-actions">
+                                            {issues.length === 0 ? (
+                                                <span className="ready-video-badge large">جاهز للطلاب</span>
+                                            ) : (
+                                                <div className="readiness-issue-list">
+                                                    {issues.map((issue) => <span key={issue.key}>{issue.label}</span>)}
+                                                </div>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className="button secondary small-button"
+                                                onClick={() => jumpToLessonEditor(course._id, lesson._id)}
+                                            >
+                                                تعديل الدرس
+                                            </button>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        </div>
                         
                         {/* Course Creator Form */}
                         <div className="card">
