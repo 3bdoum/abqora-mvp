@@ -1794,6 +1794,31 @@ input:focus, select:focus, textarea:focus {
     padding: 22px;
 }
 
+.teacher-sidebar-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.teacher-sidebar-heading h2 {
+    margin-bottom: 0;
+}
+
+.teacher-sidebar-heading span {
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.teacher-search-input {
+    margin-bottom: 16px;
+}
+
 .student-list {
     display: flex;
     flex-direction: column;
@@ -1862,6 +1887,57 @@ input:focus, select:focus, textarea:focus {
     color: var(--primary);
 }
 
+.teacher-filter-card {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.55fr) minmax(0, 1.45fr);
+    gap: 18px;
+    align-items: center;
+}
+
+.teacher-filter-card h2 {
+    margin-bottom: 0;
+}
+
+.teacher-filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.teacher-filter-buttons button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface-soft);
+    color: var(--text-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 8px 11px;
+    transition: all 0.18s ease;
+}
+
+.teacher-filter-buttons button:hover,
+.teacher-filter-buttons button.active {
+    border-color: rgba(79, 70, 229, 0.35);
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.teacher-filter-buttons span {
+    min-width: 22px;
+    height: 22px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 999px;
+    background: #fff;
+    color: inherit;
+}
+
 .teacher-lesson {
     padding: 22px;
     border-right: 5px solid var(--border);
@@ -1895,8 +1971,70 @@ input:focus, select:focus, textarea:focus {
     font-weight: 800;
 }
 
+.teacher-content-readiness {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.teacher-content-readiness span {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    border: 1px solid var(--border);
+}
+
+.teacher-content-readiness .ready {
+    background: var(--success-light);
+    border-color: rgba(16, 185, 129, 0.22);
+    color: var(--success);
+}
+
+.teacher-content-readiness .missing {
+    background: var(--warning-light);
+    border-color: rgba(245, 158, 11, 0.25);
+    color: #a16207;
+}
+
+.teacher-content-warning {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(245, 158, 11, 0.24);
+    border-radius: 13px;
+    background: #fffbeb;
+    color: #a16207;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
 .teacher-lesson textarea {
     margin: 16px 0 10px;
+}
+
+.feedback-template-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 4px;
+}
+
+.feedback-template-row button {
+    border: 1px solid rgba(79, 70, 229, 0.18);
+    border-radius: 999px;
+    background: #eef2ff;
+    color: var(--primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 7px 10px;
+}
+
+.feedback-template-row button:hover {
+    background: var(--primary);
+    color: #fff;
 }
 
 .teacher-actions {
@@ -2122,7 +2260,8 @@ input:focus, select:focus, textarea:focus {
     }
 
     .readiness-hero,
-    .readiness-row {
+    .readiness-row,
+    .teacher-filter-card {
         grid-template-columns: 1fr;
     }
 
@@ -2149,6 +2288,10 @@ input:focus, select:focus, textarea:focus {
     .student-list {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .teacher-filter-buttons {
+        justify-content: flex-start;
     }
 }
 

@@ -2,6 +2,7 @@ const User = require('../models/userModel');
 const Course = require('../models/courseModel');
 const Lesson = require('../models/lessonModel');
 const Progress = require('../models/progressModel');
+const Quiz = require('../models/quizModel');
 const TeacherStudentAssignment = require('../models/teacherStudentAssignmentModel');
 const ProgressAuditLog = require('../models/progressAuditLogModel');
 const { canManageStudent } = require('../utils/teacherAccess');
@@ -48,7 +49,11 @@ const listStudents = async (req, res) => {
     }
 };
 
-const buildCourseView = (course, progress) => ({
+const hasLessonVideos = (lesson) => Boolean(
+    lesson.videoUrls?.some((video) => video.url?.trim()) || lesson.videoUrl?.trim()
+);
+
+const buildCourseView = (course, progress, quizLessonIds = new Set()) => ({
     ...course.toObject(),
     progress: serializeCourseProgress(course, progress),
     lessons: course.lessons.map((lesson) => {
@@ -59,9 +64,20 @@ const buildCourseView = (course, progress) => ({
             accessOverride: entry?.accessOverride || 'default',
             feedback: entry?.feedback || '',
             submittedAt: entry?.submittedAt || null,
+            contentReady: {
+                hasVideos: hasLessonVideos(lesson),
+                hasCodeOrgLink: Boolean(lesson.codeOrgLink?.trim()),
+                hasQuiz: quizLessonIds.has(String(lesson._id)),
+            },
         };
     }),
 });
+
+const getQuizLessonIds = async (courses) => {
+    const lessonIds = courses.flatMap((course) => course.lessons.map((lesson) => lesson._id));
+    const quizzes = await Quiz.find({ lesson: { $in: lessonIds } }).select('lesson');
+    return new Set(quizzes.map((quiz) => String(quiz.lesson)));
+};
 
 const getStudentCourses = async (req, res) => {
     try {
@@ -75,9 +91,10 @@ const getStudentCourses = async (req, res) => {
             options: { sort: { order: 1 } }
         });
         const progressMap = new Map(progressList.map((progress) => [String(progress.course), progress]));
+        const quizLessonIds = await getQuizLessonIds(courses);
         return res.json({
             student,
-            courses: courses.map((course) => buildCourseView(course, progressMap.get(String(course._id)))),
+            courses: courses.map((course) => buildCourseView(course, progressMap.get(String(course._id)), quizLessonIds)),
         });
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -101,8 +118,9 @@ const getStudentCourse = async (req, res) => {
                 .limit(100),
         ]);
         if (!course || !progress) return res.status(404).json({ message: 'تسجيل الدورة غير موجود' });
+        const quizLessonIds = await getQuizLessonIds([course]);
 
-        return res.json({ student, course: buildCourseView(course, progress), audit });
+        return res.json({ student, course: buildCourseView(course, progress, quizLessonIds), audit });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }

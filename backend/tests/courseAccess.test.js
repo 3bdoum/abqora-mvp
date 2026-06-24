@@ -183,6 +183,39 @@ test('teacher can manage an assigned student', async () => {
     assert.equal(response.body.studentState, 'available');
 });
 
+test('teacher course detail includes lesson content readiness', async () => {
+    const data = await setupScenario();
+    await Lesson.updateOne(
+        { _id: data.lessons[0]._id },
+        { $set: { videoUrls: [{ title: 'شرح', url: 'https://www.youtube.com/watch?v=abc123' }] } }
+    );
+    await Quiz.create({
+        lesson: data.lessons[0]._id,
+        title: 'اختبار جاهزية',
+        questions: [{
+            questionText: 'ما الهدف؟',
+            options: ['التعلم', 'التخمين'],
+            correctIndex: 0,
+        }],
+    });
+
+    const response = await request(app)
+        .get(`/api/teacher/students/${data.student._id}/courses/${data.course._id}`)
+        .set(auth(data.tokens.teacher));
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(response.body.course.lessons[0].contentReady, {
+        hasVideos: true,
+        hasCodeOrgLink: true,
+        hasQuiz: true,
+    });
+    assert.deepEqual(response.body.course.lessons[1].contentReady, {
+        hasVideos: false,
+        hasCodeOrgLink: true,
+        hasQuiz: false,
+    });
+});
+
 test('teacher cannot manage an unassigned student', async () => {
     const data = await setupScenario();
     const response = await request(app)
