@@ -3,6 +3,40 @@ import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import API from '../../utils/api';
 
+const emptyVideoRow = () => ({
+    title: '',
+    url: '',
+    description: '',
+    duration: '',
+});
+
+const emptyLessonForm = {
+    title: '',
+    content: '',
+    codeOrgLink: '',
+};
+
+const lessonHasVideos = (lesson) => Boolean(
+    lesson?.videoUrls?.some((video) => video.url?.trim()) || lesson?.videoUrl?.trim()
+);
+
+const getYoutubeEmbedUrl = (url) => {
+    if (!url) return '';
+
+    try {
+        if (url.includes('/embed/')) return url;
+        const shortMatch = url.match(/youtu\.be\/([^?&]+)/);
+        if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`;
+        const watchMatch = url.match(/[?&]v=([^&]+)/);
+        if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}`;
+        const shortsMatch = url.match(/youtube\.com\/shorts\/([^?&/]+)/);
+        if (shortsMatch) return `https://www.youtube.com/embed/${shortsMatch[1]}`;
+        return '';
+    } catch {
+        return '';
+    }
+};
+
 export default function AdminDashboard() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState('submissions');
@@ -21,6 +55,15 @@ export default function AdminDashboard() {
     const [newLessonVideo, setNewLessonVideo] = useState('');
     const [newLessonCodeLink, setNewLessonCodeLink] = useState('');
     const [newLessonOrder, setNewLessonOrder] = useState('1');
+
+    // Lesson video manager state
+    const [selectedManageCourseId, setSelectedManageCourseId] = useState('');
+    const [courseLessons, setCourseLessons] = useState([]);
+    const [selectedLessonId, setSelectedLessonId] = useState('');
+    const [lessonForm, setLessonForm] = useState(emptyLessonForm);
+    const [videoRows, setVideoRows] = useState([emptyVideoRow()]);
+    const [lessonManagerLoading, setLessonManagerLoading] = useState(false);
+    const [savingLesson, setSavingLesson] = useState(false);
 
     // Review submission state
     const [feedbacks, setFeedbacks] = useState({});
@@ -42,6 +85,60 @@ export default function AdminDashboard() {
         fetchData();
     }, []);
 
+    const selectLessonForEditing = (lesson) => {
+        if (!lesson) {
+            setSelectedLessonId('');
+            setLessonForm(emptyLessonForm);
+            setVideoRows([emptyVideoRow()]);
+            return;
+        }
+
+        setSelectedLessonId(lesson._id);
+        setLessonForm({
+            title: lesson.title || '',
+            content: lesson.content || '',
+            codeOrgLink: lesson.codeOrgLink || '',
+        });
+
+        const rows = lesson.videoUrls?.length
+            ? lesson.videoUrls
+            : (lesson.videoUrl ? [{ title: 'الشرح المرئي', url: lesson.videoUrl }] : []);
+
+        setVideoRows(rows.length ? rows.map((video) => ({
+            title: video.title || '',
+            url: video.url || '',
+            description: video.description || '',
+            duration: video.duration || '',
+        })) : [emptyVideoRow()]);
+    };
+
+    const fetchLessonsForCourse = async (courseId, preferredLessonId = '') => {
+        if (!courseId) {
+            setCourseLessons([]);
+            selectLessonForEditing(null);
+            return [];
+        }
+
+        setLessonManagerLoading(true);
+        try {
+            const { data } = await API.get(`/lessons/course/${courseId}`);
+            const sortedLessons = [...data].sort((a, b) => a.order - b.order);
+            setCourseLessons(sortedLessons);
+            const lessonToSelect = sortedLessons.find((lesson) => lesson._id === preferredLessonId)
+                || sortedLessons.find((lesson) => lesson._id === selectedLessonId)
+                || sortedLessons[0];
+            selectLessonForEditing(lessonToSelect);
+            return sortedLessons;
+        } catch (err) {
+            setMessage('تعذر تحميل دروس الدورة لإدارة الفيديوهات');
+            setCourseLessons([]);
+            selectLessonForEditing(null);
+            return [];
+        } finally {
+            setLessonManagerLoading(false);
+        }
+    };
+
     const fetchData = async () => {
         try {
             const subRes = await API.get('/submissions');
@@ -49,8 +146,12 @@ export default function AdminDashboard() {
 
             const coursesRes = await API.get('/courses');
             setCourses(coursesRes.data);
-            if (coursesRes.data.length > 0) {
-                setSelectedCourseId(coursesRes.data[0]._id);
+            const firstCourseId = coursesRes.data[0]?._id || '';
+            const courseIdForManager = selectedManageCourseId || selectedCourseId || firstCourseId;
+            if (firstCourseId) {
+                setSelectedCourseId((current) => current || firstCourseId);
+                setSelectedManageCourseId((current) => current || courseIdForManager);
+                await fetchLessonsForCourse(courseIdForManager, selectedLessonId);
             }
         } catch (err) {
             setMessage('تعذر تحميل البيانات للمشرف');
@@ -105,6 +206,59 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleManageCourseChange = async (courseId) => {
+        setSelectedManageCourseId(courseId);
+        await fetchLessonsForCourse(courseId, '');
+    };
+
+    const updateVideoRow = (index, field, value) => {
+        setVideoRows((rows) => rows.map((row, rowIndex) => (
+            rowIndex === index ? { ...row, [field]: value } : row
+        )));
+    };
+
+    const addVideoRow = () => {
+        setVideoRows((rows) => [...rows, emptyVideoRow()]);
+    };
+
+    const removeVideoRow = (index) => {
+        setVideoRows((rows) => {
+            const nextRows = rows.filter((_, rowIndex) => rowIndex !== index);
+            return nextRows.length ? nextRows : [emptyVideoRow()];
+        });
+    };
+
+    const handleUpdateLesson = async (e) => {
+        e.preventDefault();
+        if (!selectedLessonId) return;
+
+        setSavingLesson(true);
+        try {
+            const cleanedVideos = videoRows
+                .map((video) => ({
+                    title: video.title.trim(),
+                    url: video.url.trim(),
+                    description: video.description.trim(),
+                    duration: video.duration.trim(),
+                }))
+                .filter((video) => video.url);
+
+            await API.put(`/lessons/${selectedLessonId}`, {
+                title: lessonForm.title,
+                content: lessonForm.content,
+                codeOrgLink: lessonForm.codeOrgLink,
+                videoUrl: cleanedVideos[0]?.url || '',
+                videoUrls: cleanedVideos,
+            });
+            setMessage('تم حفظ بيانات الدرس وفيديوهات الشرح بنجاح ✅');
+            await fetchLessonsForCourse(selectedManageCourseId, selectedLessonId);
+        } catch (err) {
+            setMessage(`تعذر حفظ بيانات الدرس: ${err.response?.data?.message || 'تحقق من الروابط والبيانات'}`);
+        } finally {
+            setSavingLesson(false);
+        }
+    };
+
     const handleReview = async (subId, status) => {
         const feedbackText = feedbacks[subId] || '';
         try {
@@ -125,6 +279,12 @@ export default function AdminDashboard() {
             [subId]: val
         });
     };
+
+    const selectedLesson = courseLessons.find((lesson) => lesson._id === selectedLessonId);
+    const missingVideoCount = courseLessons.filter((lesson) => !lessonHasVideos(lesson)).length;
+    const readyVideoCount = Math.max(courseLessons.length - missingVideoCount, 0);
+    const previewVideo = videoRows.find((video) => video.url.trim());
+    const previewEmbedUrl = getYoutubeEmbedUrl(previewVideo?.url || '');
 
     return (
         <Layout>
@@ -319,6 +479,164 @@ export default function AdminDashboard() {
 
                                 <button type="submit" className="button" style={{ width: '100%', marginTop: '10px' }}>إضافة الدرس للدورة</button>
                             </form>
+                        </div>
+
+                        {/* Lesson Video Manager */}
+                        <div className="card admin-lesson-manager">
+                            <div className="lesson-manager-header">
+                                <div>
+                                    <span className="eyebrow">مركز جاهزية المحتوى</span>
+                                    <h2>إدارة فيديوهات الدروس 🎬</h2>
+                                    <p>اختر درساً، أضف فيديو شرح واحد أو أكثر، ثم احفظ. سيظهر الشرح للطالب قبل تطبيق Code.org.</p>
+                                </div>
+                                <div className="lesson-manager-summary">
+                                    <span><strong>{courseLessons.length}</strong> درس</span>
+                                    <span className="ready"><strong>{readyVideoCount}</strong> جاهز</span>
+                                    <span className={missingVideoCount ? 'missing' : 'ready'}><strong>{missingVideoCount}</strong> بلا فيديو</span>
+                                </div>
+                            </div>
+
+                            <label>اختر الدورة لإدارة دروسها</label>
+                            <select
+                                value={selectedManageCourseId}
+                                onChange={(e) => handleManageCourseChange(e.target.value)}
+                            >
+                                {courses.map((course) => (
+                                    <option key={course._id} value={course._id}>{course.title}</option>
+                                ))}
+                            </select>
+
+                            <div className="lesson-manager-layout">
+                                <aside className="lesson-picker">
+                                    {lessonManagerLoading ? (
+                                        <p className="muted-text">جاري تحميل الدروس...</p>
+                                    ) : courseLessons.length === 0 ? (
+                                        <p className="muted-text">لا توجد دروس في هذه الدورة بعد.</p>
+                                    ) : courseLessons.map((lesson) => (
+                                        <button
+                                            type="button"
+                                            key={lesson._id}
+                                            className={`lesson-picker-button ${selectedLessonId === lesson._id ? 'active' : ''}`}
+                                            onClick={() => selectLessonForEditing(lesson)}
+                                        >
+                                            <span>درس {lesson.order}</span>
+                                            <strong>{lesson.title}</strong>
+                                            {lessonHasVideos(lesson) ? (
+                                                <small className="ready-video-badge">✓ لديه فيديو</small>
+                                            ) : (
+                                                <small className="missing-video-badge">ينقصه فيديو</small>
+                                            )}
+                                        </button>
+                                    ))}
+                                </aside>
+
+                                <form className="lesson-video-editor" onSubmit={handleUpdateLesson}>
+                                    {selectedLesson ? (
+                                        <>
+                                            <div className="editor-heading-row">
+                                                <div>
+                                                    <span className="tag">الدرس {selectedLesson.order}</span>
+                                                    <h3>{selectedLesson.title}</h3>
+                                                </div>
+                                                {!lessonHasVideos(selectedLesson) && (
+                                                    <span className="missing-video-badge large">يحتاج فيديو شرح</span>
+                                                )}
+                                            </div>
+
+                                            <label>عنوان الدرس</label>
+                                            <input
+                                                value={lessonForm.title}
+                                                onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })}
+                                                required
+                                            />
+
+                                            <label>ملخص الدرس</label>
+                                            <textarea
+                                                value={lessonForm.content}
+                                                onChange={(e) => setLessonForm({ ...lessonForm, content: e.target.value })}
+                                                rows="3"
+                                                required
+                                            />
+
+                                            <label>رابط تطبيق Code.org للطلاب</label>
+                                            <input
+                                                value={lessonForm.codeOrgLink}
+                                                onChange={(e) => setLessonForm({ ...lessonForm, codeOrgLink: e.target.value })}
+                                                placeholder="https://studio.code.org/courses/.../lessons/1/levels/1"
+                                            />
+
+                                            <div className="video-editor-list">
+                                                <div className="editor-heading-row compact">
+                                                    <h3>فيديوهات الشرح</h3>
+                                                    <button type="button" className="button secondary small-button" onClick={addVideoRow}>
+                                                        + إضافة فيديو
+                                                    </button>
+                                                </div>
+
+                                                {videoRows.map((video, index) => (
+                                                    <div key={`video-row-${index}`} className="video-editor-row">
+                                                        <div className="video-row-title">
+                                                            <span>فيديو {index + 1}</span>
+                                                            <button
+                                                                type="button"
+                                                                className="text-link danger-link"
+                                                                onClick={() => removeVideoRow(index)}
+                                                            >
+                                                                حذف
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="video-field-grid">
+                                                            <input
+                                                                value={video.title}
+                                                                onChange={(e) => updateVideoRow(index, 'title', e.target.value)}
+                                                                placeholder="عنوان الفيديو"
+                                                            />
+                                                            <input
+                                                                value={video.duration}
+                                                                onChange={(e) => updateVideoRow(index, 'duration', e.target.value)}
+                                                                placeholder="المدة مثل 04:30"
+                                                            />
+                                                        </div>
+                                                        <input
+                                                            value={video.url}
+                                                            onChange={(e) => updateVideoRow(index, 'url', e.target.value)}
+                                                            placeholder="https://www.youtube.com/watch?v=..."
+                                                        />
+                                                        <textarea
+                                                            value={video.description}
+                                                            onChange={(e) => updateVideoRow(index, 'description', e.target.value)}
+                                                            placeholder="وصف قصير لما يشرحه الفيديو"
+                                                            rows="2"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="video-preview-box">
+                                                <strong>معاينة أول فيديو</strong>
+                                                {previewEmbedUrl ? (
+                                                    <iframe
+                                                        src={previewEmbedUrl}
+                                                        title="معاينة فيديو الشرح"
+                                                        loading="lazy"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                    />
+                                                ) : (
+                                                    <p>أضف رابط YouTube صالحاً لعرض المعاينة هنا.</p>
+                                                )}
+                                            </div>
+
+                                            <button type="submit" className="button" disabled={savingLesson}>
+                                                {savingLesson ? 'جاري الحفظ...' : 'حفظ تحديثات الدرس'}
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <p className="muted-text">اختر درساً من القائمة لبدء التحرير.</p>
+                                    )}
+                                </form>
+                            </div>
                         </div>
                     </div>
                 )}
