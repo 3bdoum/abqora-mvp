@@ -176,6 +176,8 @@ For every lesson in both courses, add at least one Abqora-owned or properly lice
 
 The lesson page will show all videos in order before the Code.org practice card. If no videos are configured yet, the student sees a clear placeholder message instead of a broken player.
 
+Admins can manage lesson videos from **Admin > إدارة المناهج والدروس > إدارة فيديوهات الدروس**. The manager shows each course's lesson count, ready-video count, lessons missing videos, per-lesson video rows, and a YouTube preview before saving.
+
 ## Roles and sample accounts
 
 Supported roles are `student`, `parent`, `teacher`, and `admin`. Public registration remains limited to students and parents; teacher/admin accounts must be provisioned by an administrator or the seed script.

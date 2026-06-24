@@ -201,6 +201,55 @@ test('admin can manage all students', async () => {
     assert.equal(response.status, 200);
 });
 
+test('admin can update lesson explanation videos', async () => {
+    const data = await setupScenario();
+
+    const teacherAttempt = await request(app)
+        .put(`/api/lessons/${data.lessons[0]._id}`)
+        .set(auth(data.tokens.teacher))
+        .send({
+            videoUrls: [{ title: 'شرح', url: 'https://www.youtube.com/watch?v=abc123' }],
+        });
+    assert.equal(teacherAttempt.status, 403);
+
+    const invalidVideo = await request(app)
+        .put(`/api/lessons/${data.lessons[0]._id}`)
+        .set(auth(data.tokens.admin))
+        .send({
+            videoUrls: [{ title: 'رابط غير آمن', url: 'http://example.com/video' }],
+        });
+    assert.equal(invalidVideo.status, 400);
+
+    const response = await request(app)
+        .put(`/api/lessons/${data.lessons[0]._id}`)
+        .set(auth(data.tokens.admin))
+        .send({
+            title: 'درس محدث',
+            content: 'محتوى محدث للشرح قبل التطبيق',
+            videoUrls: [
+                {
+                    title: 'شرح الهدف',
+                    url: 'https://www.youtube.com/watch?v=abc123',
+                    description: 'فيديو قصير يشرح المطلوب من التمرين',
+                    duration: '03:20',
+                },
+                {
+                    title: 'أخطاء شائعة',
+                    url: 'https://youtu.be/def456',
+                },
+            ],
+        });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.title, 'درس محدث');
+    assert.equal(response.body.videoUrl, 'https://www.youtube.com/watch?v=abc123');
+    assert.equal(response.body.videoUrls.length, 2);
+    assert.equal(response.body.videoUrls[0].description, 'فيديو قصير يشرح المطلوب من التمرين');
+
+    const lesson = await Lesson.findById(data.lessons[0]._id);
+    assert.equal(lesson.videoUrls.length, 2);
+    assert.equal(lesson.videoUrls[1].url, 'https://youtu.be/def456');
+});
+
 test('direct API requests cannot bypass lesson prerequisites', async () => {
     const data = await setupScenario();
     const response = await request(app)
