@@ -300,7 +300,7 @@ export default function AdminDashboard() {
             : await fetchLessonsForCourse(courseId, lessonId);
         setCourseLessons(lessons);
         selectLessonForEditing(lessons.find((lesson) => lesson._id === lessonId) || lessons[0]);
-        setTimeout(() => {
+        window.requestAnimationFrame(() => {
             document.getElementById('admin-lesson-video-manager')?.scrollIntoView({
                 behavior: 'smooth',
                 block: 'start',
@@ -673,7 +673,7 @@ export default function AdminDashboard() {
                         </div>
 
                         {/* Lesson Video Manager */}
-                        <div className="card admin-lesson-manager">
+                        <div className="card admin-lesson-manager" id="admin-lesson-video-manager">
                             <div className="lesson-manager-header">
                                 <div>
                                     <span className="eyebrow">مركز جاهزية المحتوى</span>
