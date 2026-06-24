@@ -178,6 +178,8 @@ The lesson page will show all videos in order before the Code.org practice card.
 
 Admins can manage lesson videos from **Admin > إدارة المناهج والدروس > إدارة فيديوهات الدروس**. The manager shows each course's lesson count, ready-video count, lessons missing videos, per-lesson video rows, and a YouTube preview before saving.
 
+The same admin curriculum page includes a content readiness dashboard. It calculates course readiness from lesson videos, Code.org student links, and quiz availability, then filters lessons by missing video, missing Code.org link, missing quiz, or fully ready. Use **تعديل الدرس** from any readiness row to jump directly into the lesson editor.
+
 ## Roles and sample accounts
 
 Supported roles are `student`, `parent`, `teacher`, and `admin`. Public registration remains limited to students and parents; teacher/admin accounts must be provisioned by an administrator or the seed script.

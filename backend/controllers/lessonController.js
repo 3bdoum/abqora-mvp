@@ -1,6 +1,7 @@
 const Lesson = require('../models/lessonModel');
 const Course = require('../models/courseModel');
 const Progress = require('../models/progressModel');
+const Quiz = require('../models/quizModel');
 const { getLessonState, getOrCreateLessonProgress } = require('../utils/progressAccess');
 const { isObjectId, cleanText, isStudentActivityUrl, isSafeExternalUrl } = require('../utils/validation');
 
@@ -39,6 +40,10 @@ const getLessonsByCourse = async (req, res) => {
             return res.status(400).json({ message: 'معرّف الدورة غير صالح' });
         }
         const lessons = await Lesson.find({ course: req.params.courseId }).sort('order');
+        const quizLessonIds = new Set(
+            (await Quiz.find({ lesson: { $in: lessons.map((lesson) => lesson._id) } }).select('lesson'))
+                .map((quiz) => String(quiz.lesson))
+        );
         let progress = null;
         if (req.user.role === 'student') {
             progress = await Progress.findOne({ user: req.user._id, course: req.params.courseId });
@@ -48,6 +53,9 @@ const getLessonsByCourse = async (req, res) => {
                 ? getLessonState({ lessons, lesson, progress })
                 : 'available';
             const data = { ...lesson.toObject(), studentState };
+            if (['teacher', 'admin'].includes(req.user.role)) {
+                data.hasQuiz = quizLessonIds.has(String(lesson._id));
+            }
             if (req.user.role === 'student' && studentState === 'locked') {
                 data.content = '';
                 data.videoUrl = '';

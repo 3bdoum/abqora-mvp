@@ -250,6 +250,27 @@ test('admin can update lesson explanation videos', async () => {
     assert.equal(lesson.videoUrls[1].url, 'https://youtu.be/def456');
 });
 
+test('admin lesson catalog includes quiz readiness', async () => {
+    const data = await setupScenario();
+    await Quiz.create({
+        lesson: data.lessons[0]._id,
+        title: 'اختبار جاهزية',
+        questions: [{
+            questionText: 'ما الهدف؟',
+            options: ['التعلم', 'التخمين'],
+            correctIndex: 0,
+        }],
+    });
+
+    const response = await request(app)
+        .get(`/api/lessons/course/${data.course._id}`)
+        .set(auth(data.tokens.admin));
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body[0].hasQuiz, true);
+    assert.equal(response.body[1].hasQuiz, false);
+});
+
 test('direct API requests cannot bypass lesson prerequisites', async () => {
     const data = await setupScenario();
     const response = await request(app)
