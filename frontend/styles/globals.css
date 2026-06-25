@@ -2243,6 +2243,55 @@ input:focus, select:focus, textarea:focus {
     font-size: 1.04rem;
 }
 
+.lesson-experience-hero {
+    position: relative;
+    overflow: hidden;
+}
+
+.lesson-experience-hero::after {
+    content: "";
+    position: absolute;
+    inset-inline-end: -65px;
+    bottom: -90px;
+    width: 220px;
+    height: 220px;
+    border-radius: 999px;
+    background: rgba(79, 70, 229, 0.08);
+    pointer-events: none;
+}
+
+.lesson-experience-hero.age-junior {
+    border-color: rgba(245, 158, 11, 0.24);
+    background:
+        radial-gradient(circle at 16% 14%, rgba(251, 191, 36, 0.22), transparent 34%),
+        radial-gradient(circle at 82% 18%, rgba(45, 212, 191, 0.15), transparent 32%),
+        linear-gradient(135deg, rgba(255,255,255,0.96), rgba(255,247,237,0.92));
+}
+
+.lesson-experience-hero.age-advanced {
+    background:
+        radial-gradient(circle at 16% 14%, rgba(14, 165, 233, 0.16), transparent 34%),
+        radial-gradient(circle at 84% 16%, rgba(99, 102, 241, 0.12), transparent 32%),
+        linear-gradient(135deg, rgba(255,255,255,0.96), rgba(240,249,255,0.92));
+}
+
+.lesson-hero-helper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.lesson-hero-helper span {
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(79, 70, 229, 0.1);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
 .lesson-status-panel {
     display: flex;
     flex-direction: column;
@@ -2276,6 +2325,107 @@ input:focus, select:focus, textarea:focus {
 .lesson-status-panel.state-awaiting_approval > span { background: var(--warning-light); }
 .lesson-status-panel.state-locked > span { background: var(--border); }
 
+.lesson-journey-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 20px 0 0;
+}
+
+.lesson-journey-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: rgba(255,255,255,0.88);
+    box-shadow: var(--shadow-sm);
+}
+
+.journey-step-number {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-weight: 900;
+}
+
+.lesson-journey-step strong,
+.lesson-journey-step small {
+    display: block;
+}
+
+.lesson-journey-step small {
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    margin-top: 2px;
+}
+
+.lesson-journey-step.state-completed {
+    border-color: rgba(16, 185, 129, 0.32);
+    background: rgba(236, 253, 245, 0.72);
+}
+
+.lesson-journey-step.state-awaiting_approval {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(255, 251, 235, 0.76);
+}
+
+.lesson-journey-step.state-needs-content {
+    border-style: dashed;
+    opacity: 0.82;
+}
+
+.teacher-feedback-card {
+    display: flex;
+    gap: 14px;
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.9);
+    box-shadow: var(--shadow-sm);
+}
+
+.teacher-feedback-card > span {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    border-radius: 15px;
+    background: var(--primary-light);
+    font-size: 1.18rem;
+}
+
+.teacher-feedback-card strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.teacher-feedback-card p {
+    margin-bottom: 4px;
+}
+
+.teacher-feedback-card small {
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.retry-feedback-card {
+    border-color: rgba(245, 158, 11, 0.28);
+    background: linear-gradient(135deg, rgba(255, 251, 235, 0.88), rgba(255,255,255,0.92));
+}
+
+.approved-feedback-card {
+    border-color: rgba(16, 185, 129, 0.28);
+    background: linear-gradient(135deg, rgba(236, 253, 245, 0.88), rgba(255,255,255,0.92));
+}
+
 .completion-card {
     margin-top: 32px;
     text-align: center;
@@ -2290,6 +2440,11 @@ input:focus, select:focus, textarea:focus {
     margin-top: 32px;
 }
 
+.lesson-step-card {
+    border-radius: 24px;
+    box-shadow: var(--shadow-md);
+}
+
 .lesson-section-heading {
     display: flex;
     align-items: flex-start;
@@ -2299,6 +2454,17 @@ input:focus, select:focus, textarea:focus {
 
 .lesson-section-heading h2 {
     margin-bottom: 6px;
+}
+
+.lesson-section-heading-v2 {
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.centered-heading {
+    justify-content: center;
+    text-align: right;
+    width: 100%;
 }
 
 .step-pill {
@@ -2313,6 +2479,11 @@ input:focus, select:focus, textarea:focus {
     color: white;
     font-weight: 800;
     box-shadow: 0 10px 20px rgba(79, 70, 229, 0.22);
+}
+
+.optional-step-pill {
+    background: var(--warning);
+    box-shadow: 0 10px 20px rgba(245, 158, 11, 0.18);
 }
 
 .lesson-video-list {
@@ -2385,6 +2556,103 @@ input:focus, select:focus, textarea:focus {
     text-align: right;
 }
 
+.practice-info-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(210px, 0.34fr);
+    align-items: center;
+    gap: 16px;
+    margin-top: 18px;
+    text-align: right;
+}
+
+.practice-note {
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.74);
+    border: 1px solid rgba(125, 211, 252, 0.72);
+}
+
+.practice-note strong {
+    color: #0369a1;
+}
+
+.practice-note p {
+    margin-top: 4px;
+}
+
+.practice-launch-button {
+    width: 100%;
+    justify-content: center;
+    font-size: 1.08rem;
+}
+
+.missing-practice-card {
+    background: linear-gradient(135deg, #fff7ed 0%, #fffbeb 100%);
+    border-color: rgba(245, 158, 11, 0.28);
+}
+
+.project-submission-card {
+    margin-top: 32px;
+}
+
+.submission-state-box {
+    margin: 16px 0;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    text-align: right;
+}
+
+.submission-state-box strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.submission-state-box.approved {
+    color: var(--success);
+    border-color: rgba(16, 185, 129, 0.28);
+    background: var(--success-light);
+}
+
+.submission-state-box.pending {
+    color: #a16207;
+    border-color: rgba(245, 158, 11, 0.28);
+    background: var(--warning-light);
+}
+
+.submission-state-box.rejected {
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.25);
+    background: #fee2e2;
+}
+
+.lesson-completion-v2 {
+    border-radius: 24px;
+}
+
+.lesson-completion-v2.state-completed {
+    border-color: rgba(16, 185, 129, 0.28);
+    background:
+        radial-gradient(circle at 12% 12%, rgba(16, 185, 129, 0.12), transparent 32%),
+        var(--surface);
+}
+
+.lesson-completion-v2.state-awaiting_approval {
+    border-color: rgba(245, 158, 11, 0.28);
+}
+
+.lesson-action-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.lesson-large-status {
+    font-size: 1rem;
+    padding: 10px 20px;
+}
+
 .placeholder-lesson-card {
     margin-top: 32px;
     background: linear-gradient(135deg, #fff7ed 0%, #fffbeb 100%);
@@ -2419,6 +2687,8 @@ input:focus, select:focus, textarea:focus {
     .teacher-layout,
     .dashboard-hero-card,
     .student-home-grid,
+    .lesson-journey-strip,
+    .practice-info-grid,
     .lesson-hero-card {
         grid-template-columns: 1fr;
     }
@@ -2512,6 +2782,10 @@ input:focus, select:focus, textarea:focus {
         font-size: 1.75rem;
     }
 
+    .lesson-experience-hero.age-junior h1 {
+        font-size: 1.7rem;
+    }
+
     .dashboard-next-card,
     .lesson-status-panel {
         padding: 16px;
@@ -2559,6 +2833,17 @@ input:focus, select:focus, textarea:focus {
 
     .lesson-section-heading {
         flex-direction: column;
+    }
+
+    .lesson-journey-step,
+    .teacher-feedback-card {
+        align-items: flex-start;
+    }
+
+    .lesson-action-row .button,
+    .lesson-action-row .tag,
+    .practice-launch-button {
+        width: 100%;
     }
 
     .readiness-toolbar {
