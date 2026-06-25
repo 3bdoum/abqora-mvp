@@ -369,7 +369,16 @@ export default function AdminDashboard() {
         return true;
     });
 
+    const priorityReadinessRow = readinessRows.find(({ lesson }) => !lessonHasVideos(lesson))
+        || readinessRows.find(({ lesson }) => !lessonHasCodeOrgLink(lesson))
+        || readinessRows.find(({ lesson }) => !lessonHasQuiz(lesson));
     const selectedLesson = courseLessons.find((lesson) => lesson._id === selectedLessonId);
+    const selectedLessonIssues = selectedLesson ? getLessonReadinessIssues(selectedLesson) : [];
+    const selectedLessonChecklist = selectedLesson ? [
+        { key: 'video', label: 'فيديو شرح', ready: lessonHasVideos(selectedLesson), icon: '🎬' },
+        { key: 'codeorg', label: 'رابط Code.org', ready: lessonHasCodeOrgLink(selectedLesson), icon: '🔗' },
+        { key: 'quiz', label: 'اختبار', ready: lessonHasQuiz(selectedLesson), icon: '✍️' },
+    ] : [];
     const missingVideoCount = courseLessons.filter((lesson) => !lessonHasVideos(lesson)).length;
     const readyVideoCount = Math.max(courseLessons.length - missingVideoCount, 0);
     const previewVideo = videoRows.find((video) => video.url.trim());
@@ -504,6 +513,34 @@ export default function AdminDashboard() {
                                 <div className={readinessStats.missingCodeOrg ? 'needs-work' : 'is-ready'}><span>🔗</span><strong>{readinessStats.missingCodeOrg}</strong><p>بلا رابط Code.org</p></div>
                                 <div className={readinessStats.missingQuizzes ? 'needs-work' : 'is-ready'}><span>✍️</span><strong>{readinessStats.missingQuizzes}</strong><p>بلا اختبار</p></div>
                             </div>
+
+                            {priorityReadinessRow ? (
+                                <div className="readiness-priority-card">
+                                    <div>
+                                        <span className="eyebrow">أولوية اليوم</span>
+                                        <h3>درس {priorityReadinessRow.lesson.order}: {priorityReadinessRow.lesson.title}</h3>
+                                        <p>{priorityReadinessRow.course.title}</p>
+                                        <div className="readiness-issue-list">
+                                            {priorityReadinessRow.issues.map((issue) => <span key={issue.key}>{issue.label}</span>)}
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="button small-button"
+                                        onClick={() => jumpToLessonEditor(priorityReadinessRow.course._id, priorityReadinessRow.lesson._id)}
+                                    >
+                                        تجهيز هذا الدرس الآن
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="readiness-priority-card is-complete">
+                                    <div>
+                                        <span className="eyebrow">أولوية اليوم</span>
+                                        <h3>كل الدروس جاهزة للطلاب 🎉</h3>
+                                        <p>لا توجد نواقص في الفيديوهات أو الروابط أو الاختبارات.</p>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="course-readiness-grid">
                                 {courseReadiness.map(({ course, total, ready, percentage }) => (
@@ -729,9 +766,19 @@ export default function AdminDashboard() {
                                                     <span className="tag">الدرس {selectedLesson.order}</span>
                                                     <h3>{selectedLesson.title}</h3>
                                                 </div>
-                                                {!lessonHasVideos(selectedLesson) && (
-                                                    <span className="missing-video-badge large">يحتاج فيديو شرح</span>
+                                                {selectedLessonIssues.length ? (
+                                                    <span className="missing-video-badge large">{selectedLessonIssues.length} عناصر ناقصة</span>
+                                                ) : (
+                                                    <span className="ready-video-badge large">جاهز للطلاب</span>
                                                 )}
+                                            </div>
+
+                                            <div className="lesson-readiness-checklist">
+                                                {selectedLessonChecklist.map((item) => (
+                                                    <span key={item.key} className={item.ready ? 'ready' : 'missing'}>
+                                                        {item.icon} {item.label} {item.ready ? '✓' : 'ناقص'}
+                                                    </span>
+                                                ))}
                                             </div>
 
                                             <label>عنوان الدرس</label>

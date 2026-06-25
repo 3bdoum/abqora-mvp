@@ -590,6 +590,27 @@ input:focus, select:focus, textarea:focus {
     background: #ecfdf5;
 }
 
+.readiness-priority-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    margin: 18px 0;
+    padding: 18px;
+    border: 1px solid rgba(245, 158, 11, 0.26);
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(255, 251, 235, 0.92), rgba(255,255,255,0.92));
+}
+
+.readiness-priority-card h3 {
+    margin-bottom: 4px;
+}
+
+.readiness-priority-card.is-complete {
+    border-color: rgba(16, 185, 129, 0.24);
+    background: linear-gradient(135deg, rgba(236, 253, 245, 0.92), rgba(255,255,255,0.92));
+}
+
 .course-readiness-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -843,6 +864,33 @@ input:focus, select:focus, textarea:focus {
 
 .editor-heading-row h3 {
     margin: 6px 0 0;
+}
+
+.lesson-readiness-checklist {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0 18px;
+}
+
+.lesson-readiness-checklist span {
+    padding: 7px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.lesson-readiness-checklist .ready {
+    color: var(--success);
+    background: var(--success-light);
+    border-color: rgba(16, 185, 129, 0.24);
+}
+
+.lesson-readiness-checklist .missing {
+    color: #a16207;
+    background: var(--warning-light);
+    border-color: rgba(245, 158, 11, 0.24);
 }
 
 .video-editor-list {
@@ -3270,6 +3318,7 @@ input:focus, select:focus, textarea:focus {
 
     .readiness-hero,
     .readiness-row,
+    .readiness-priority-card,
     .teacher-filter-card {
         grid-template-columns: 1fr;
     }
