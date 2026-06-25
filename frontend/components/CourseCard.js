@@ -4,7 +4,24 @@ import Image from 'next/image';
 import API from '../utils/api';
 import { withBasePath } from '../utils/paths';
 
-export default function CourseCard({ course }) {
+const isRecommendedCourseForAge = (course, ageGroup) => {
+    if (!course || !ageGroup) return false;
+
+    const title = `${course.title || ''} ${course.slug || ''}`.toLowerCase();
+    const ageRange = `${course.ageRange || ''}`.replace('–', '-').replace(/\s/g, '');
+
+    if (ageGroup === '5-8') {
+        return title.includes('pre-reader') || ageRange.includes('5-8');
+    }
+
+    if (ageGroup === '9-12' || ageGroup === '13-16') {
+        return title.includes('express-course') || title.includes('express course') || ageRange.includes('14');
+    }
+
+    return false;
+};
+
+export default function CourseCard({ course, studentAgeGroup = '' }) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -13,6 +30,7 @@ export default function CourseCard({ course }) {
     const isComplete = progress.status === 'completed';
     const started = progress.enrolled && !isComplete;
     const progressPercent = progress.percentage || 0;
+    const isAgeRecommended = isRecommendedCourseForAge(course, studentAgeGroup);
 
     const openCourse = async () => {
         const token = localStorage.getItem('token');
@@ -52,6 +70,7 @@ export default function CourseCard({ course }) {
             <div className="course-card-body">
                 <div className="course-meta-row">
                     <span className="tag">{course.ageRange || course.level}</span>
+                    {isAgeRecommended && <span className="tag recommended-tag">مناسبة لعمر الطالب ✨</span>}
                     <span className="course-lesson-count">{lessonCount} درساً 📚</span>
                 </div>
                 <h3>{course.title}</h3>
