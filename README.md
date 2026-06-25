@@ -96,6 +96,8 @@ MONGODB_URI=<your MongoDB Atlas connection string>
 JWT_SECRET=<a long random secret>
 CORS_ORIGIN=https://3bdoum.github.io
 FRONTEND_URL=https://3bdoum.github.io/abqora-mvp
+OPENAI_API_KEY=<optional, enables the student AI tutor>
+OPENAI_MODEL=gpt-4.1-mini
 ```
 
 After deploying backend code, run `npm run migrate:courses` once from the Render Shell to update course and lesson records without creating demo users. Run the seed script only for demo/test databases, and never after real users exist. In production it is blocked unless `ALLOW_PRODUCTION_SEED=true` is set intentionally.
@@ -181,6 +183,20 @@ Admins can manage lesson videos from **Admin > إدارة المناهج وال�
 The same admin curriculum page includes a content readiness dashboard. It calculates course readiness from lesson videos, Code.org student links, and quiz availability, then filters lessons by missing video, missing Code.org link, missing quiz, or fully ready. Use **تعديل الدرس** from any readiness row to jump directly into the lesson editor.
 
 Teachers and admins can use **لوحة المعلم** to search assigned students, filter lessons by review status, apply feedback templates, approve/reject completion requests, manually unlock/relock lessons, and see per-lesson content readiness hints for videos, Code.org links, and quizzes.
+
+## Student AI tutor
+
+The lesson page includes an optional Arabic AI tutor for students. It is scoped to the currently available lesson, uses the student's age group for tone, and is designed to give hints and explain the exercise without providing copy-ready full answers.
+
+The AI tutor:
+
+- runs only through the backend; never expose `OPENAI_API_KEY` in frontend code;
+- checks the same lesson prerequisite rules as lesson access, so locked lessons cannot be queried through direct API calls;
+- cannot approve completions, unlock lessons, or change progress;
+- stores student questions and assistant replies in MongoDB for supervision and future review;
+- blocks obvious requests for full solutions, credentials, API keys, or lesson approval shortcuts.
+
+If `OPENAI_API_KEY` is not configured, the backend returns a clear disabled-state message and no OpenAI request is made. To enable it in production, add `OPENAI_API_KEY` in Render's environment variables and redeploy the backend. `OPENAI_MODEL` is optional and defaults to `gpt-4.1-mini`.
 
 ## Roles and sample accounts
 

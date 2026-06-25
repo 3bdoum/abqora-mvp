@@ -8,6 +8,7 @@ const progressRoutes = require('./routes/progressRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
 const certificateRoutes = require('./routes/certificateRoutes');
 const teacherRoutes = require('./routes/teacherRoutes');
+const aiTutorRoutes = require('./routes/aiTutorRoutes');
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/teacher', teacherRoutes);
+app.use('/api/ai', aiTutorRoutes);
 
 app.use((err, req, res, next) => {
     if (err?.message === 'Not allowed by CORS') {

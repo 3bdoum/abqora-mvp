@@ -144,6 +144,7 @@ export default function LessonPage() {
     const [lessonState, setLessonState] = useState('in_progress');
     const [pageError, setPageError] = useState('');
     const [studentAgeGroup, setStudentAgeGroup] = useState('');
+    const [userRole, setUserRole] = useState('');
 
     // Project submission form state
     const [projectUrl, setProjectUrl] = useState('');
@@ -155,6 +156,12 @@ export default function LessonPage() {
     const [submittingCompletion, setSubmittingCompletion] = useState(false);
     const [completionMessage, setCompletionMessage] = useState('');
     const [completionError, setCompletionError] = useState('');
+    const [aiOpen, setAiOpen] = useState(false);
+    const [aiMessages, setAiMessages] = useState([]);
+    const [aiInput, setAiInput] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState('');
+    const [aiUnavailable, setAiUnavailable] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -162,6 +169,8 @@ export default function LessonPage() {
             router.push('/login');
             return;
         }
+        const storedRole = localStorage.getItem('userRole') || '';
+        setUserRole(storedRole);
         setStudentAgeGroup(localStorage.getItem('userAgeGroup') || '');
         if (!id) return;
 
@@ -171,6 +180,9 @@ export default function LessonPage() {
                 const lessonRes = await API.get(`/lessons/${id}`);
                 setLesson(lessonRes.data);
                 setLessonState(lessonRes.data.studentState || 'in_progress');
+                if (storedRole === 'student' && !lessonRes.data.isPlaceholder) {
+                    loadAiHistory(lessonRes.data._id);
+                }
 
                 // Fetch course, progress, and student submissions together.
                 const [courseRes, progressRes, submissionsRes] = await Promise.all([
@@ -202,6 +214,68 @@ export default function LessonPage() {
 
         fetchLessonData();
     }, [id]);
+
+    const loadAiHistory = async (lessonId) => {
+        try {
+            const { data } = await API.get(`/ai/tutor/${lessonId}`);
+            setAiMessages(data.flatMap((exchange) => ([
+                {
+                    role: 'user',
+                    content: exchange.userMessage,
+                    createdAt: exchange.createdAt,
+                },
+                {
+                    role: 'assistant',
+                    content: exchange.assistantMessage,
+                    status: exchange.status,
+                    createdAt: exchange.createdAt,
+                },
+            ])));
+        } catch (err) {
+            if (err.response?.status === 403) return;
+            setAiError(err.response?.data?.message || 'تعذر تحميل محادثة مساعد عبقورا');
+        }
+    };
+
+    const sendAiMessage = async (presetText = '') => {
+        const message = (presetText || aiInput).trim();
+        if (!message || aiLoading || !lesson?._id) return;
+
+        setAiLoading(true);
+        setAiError('');
+        setAiUnavailable(false);
+        setAiInput('');
+        setAiMessages((current) => [...current, { role: 'user', content: message, optimistic: true }]);
+
+        try {
+            const { data } = await API.post('/ai/tutor', {
+                lessonId: lesson._id,
+                message,
+            });
+            setAiMessages((current) => [
+                ...current,
+                {
+                    role: 'assistant',
+                    content: data.message,
+                    status: data.status,
+                    createdAt: data.createdAt,
+                },
+            ]);
+        } catch (err) {
+            const messageFromApi = err.response?.data?.message || 'تعذر تشغيل مساعد عبقورا الآن. حاول مرة أخرى.';
+            if (err.response?.status === 503 || err.response?.data?.code === 'AI_NOT_CONFIGURED') {
+                setAiUnavailable(true);
+            }
+            setAiError(messageFromApi);
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    const handleAiSubmit = (event) => {
+        event.preventDefault();
+        sendAiMessage();
+    };
 
     const markLessonComplete = async () => {
         setSubmittingCompletion(true);
@@ -291,6 +365,11 @@ export default function LessonPage() {
             state: lessonState,
         },
     ];
+    const aiQuickPrompts = [
+        'اشرح لي المطلوب ببساطة',
+        'أعطني تلميحًا بدون الحل',
+        'ما الخطوة التالية؟',
+    ];
 
     return (
         <Layout>
@@ -353,6 +432,95 @@ export default function LessonPage() {
                                     <p>{teacherFeedback}</p>
                                     <small>عدّل عملك أو أعد التطبيق، ثم أرسل الدرس مرة أخرى للمراجعة.</small>
                                 </div>
+                            </div>
+                        )}
+
+                        {userRole === 'student' && !lesson.isPlaceholder && (
+                            <div className={`card ai-tutor-card ${aiOpen ? 'is-open' : ''}`}>
+                                <div className="ai-tutor-header">
+                                    <div className="ai-tutor-title">
+                                        <span className="ai-tutor-avatar" aria-hidden="true">🤖</span>
+                                        <div>
+                                            <span className="eyebrow">مساعد ذكي داخل الدرس</span>
+                                            <h2>اسأل مساعد عبقورا قبل التطبيق</h2>
+                                            <p>يعطيك تلميحات مناسبة لعُمرك وسياق هذا الدرس، بدون إعطاء الحل الكامل.</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="button btn-secondary"
+                                        onClick={() => setAiOpen((open) => !open)}
+                                    >
+                                        {aiOpen ? 'إخفاء المساعد' : 'افتح المساعد'}
+                                    </button>
+                                </div>
+
+                                {aiOpen && (
+                                    <div className="ai-tutor-body">
+                                        <div className="ai-tutor-notice">
+                                            💡 استخدمه للسؤال عن الفكرة أو الخطوة التالية. المعلم فقط يستطيع اعتماد الدرس أو فتح الدروس المقفلة.
+                                        </div>
+
+                                        {aiUnavailable && (
+                                            <div className="error-box compact-alert">
+                                                مساعد عبقورا غير مفعّل في الخادم بعد. أضف OPENAI_API_KEY في إعدادات backend ثم أعد النشر.
+                                            </div>
+                                        )}
+                                        {aiError && <div className="error-box compact-alert">{aiError}</div>}
+
+                                        <div className="ai-message-list" aria-live="polite">
+                                            {aiMessages.length === 0 ? (
+                                                <div className="ai-empty-state">
+                                                    <strong>ابدأ بسؤال صغير.</strong>
+                                                    <p>مثلاً: “ما المطلوب في هذا التمرين؟” أو “أعطني تلميحًا”.</p>
+                                                </div>
+                                            ) : (
+                                                aiMessages.map((messageItem, index) => (
+                                                    <div
+                                                        className={`ai-message ${messageItem.role} ${messageItem.status === 'blocked' ? 'blocked' : ''}`}
+                                                        key={`${messageItem.role}-${index}-${messageItem.content.slice(0, 18)}`}
+                                                    >
+                                                        <span>{messageItem.role === 'user' ? 'أنت' : 'عبقورا'}</span>
+                                                        <p>{messageItem.content}</p>
+                                                    </div>
+                                                ))
+                                            )}
+                                            {aiLoading && (
+                                                <div className="ai-message assistant loading">
+                                                    <span>عبقورا</span>
+                                                    <p>يفكر في تلميح مناسب...</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="ai-tutor-prompts" aria-label="أسئلة سريعة">
+                                            {aiQuickPrompts.map((prompt) => (
+                                                <button
+                                                    type="button"
+                                                    className="small-button"
+                                                    onClick={() => sendAiMessage(prompt)}
+                                                    disabled={aiLoading}
+                                                    key={prompt}
+                                                >
+                                                    {prompt}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        <form className="ai-tutor-form" onSubmit={handleAiSubmit}>
+                                            <textarea
+                                                value={aiInput}
+                                                onChange={(event) => setAiInput(event.target.value)}
+                                                placeholder="اكتب سؤالك عن هذا الدرس..."
+                                                rows="2"
+                                                disabled={aiLoading}
+                                            />
+                                            <button type="submit" className="button" disabled={aiLoading || !aiInput.trim()}>
+                                                {aiLoading ? 'يرد...' : 'اسأل'}
+                                            </button>
+                                        </form>
+                                    </div>
+                                )}
                             </div>
                         )}
 

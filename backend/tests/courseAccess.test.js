@@ -19,6 +19,7 @@ const ProgressAuditLog = require('../models/progressAuditLogModel');
 const Quiz = require('../models/quizModel');
 const Submission = require('../models/submissionModel');
 const Certificate = require('../models/certificateModel');
+const AiTutorExchange = require('../models/aiTutorExchangeModel');
 const { backfillLegacyProgress, seedData } = require('../utils/seed');
 
 let mongo;
@@ -30,7 +31,7 @@ const clearDatabase = async () => {
     await Promise.all([
         User.deleteMany({}), Course.deleteMany({}), Lesson.deleteMany({}), Progress.deleteMany({}),
         TeacherStudentAssignment.deleteMany({}), ProgressAuditLog.deleteMany({}), Quiz.deleteMany({}),
-        Submission.deleteMany({}), Certificate.deleteMany({}),
+        Submission.deleteMany({}), Certificate.deleteMany({}), AiTutorExchange.deleteMany({}),
     ]);
 };
 
@@ -315,6 +316,74 @@ test('direct API requests cannot bypass lesson prerequisites', async () => {
     const progress = await Progress.findOne({ user: data.student._id, course: data.course._id });
     assert.equal(progress.completedLessons.length, 0);
     assert.equal(progress.lessonProgress.length, 0);
+});
+
+test('student cannot use AI tutor for a locked lesson', async () => {
+    const data = await setupScenario();
+    const response = await request(app)
+        .post('/api/ai/tutor')
+        .set(auth(data.tokens.student))
+        .send({ lessonId: data.lessons[1]._id, message: 'ساعدني في هذا الدرس' });
+
+    assert.equal(response.status, 403);
+});
+
+test('AI tutor reports configuration issue when OpenAI key is missing', async () => {
+    const data = await setupScenario();
+    const previousApiKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+
+    try {
+        const response = await request(app)
+            .post('/api/ai/tutor')
+            .set(auth(data.tokens.student))
+            .send({ lessonId: data.lessons[0]._id, message: 'اشرح لي المطلوب ببساطة' });
+
+        assert.equal(response.status, 503);
+        assert.equal(response.body.code, 'AI_NOT_CONFIGURED');
+    } finally {
+        if (previousApiKey) process.env.OPENAI_API_KEY = previousApiKey;
+    }
+});
+
+test('AI tutor answers available lessons and stores the exchange', async () => {
+    const data = await setupScenario();
+    const previousApiKey = process.env.OPENAI_API_KEY;
+    const previousFetch = global.fetch;
+    process.env.OPENAI_API_KEY = 'test-openai-key';
+    global.fetch = async (url, options) => {
+        assert.equal(url, 'https://api.openai.com/v1/responses');
+        const body = JSON.parse(options.body);
+        assert.equal(body.model, 'gpt-4.1-mini');
+        assert.match(body.input[0].content, /مساعد عبقورا الذكي/);
+        assert.match(body.input[1].content, /اشرح لي المطلوب/);
+        return {
+            ok: true,
+            json: async () => ({ output_text: 'ابدأ بمشاهدة الفيديو، ثم جرّب خطوة صغيرة واسأل نفسك: ماذا يجب أن يحدث أولاً؟' }),
+        };
+    };
+
+    try {
+        const response = await request(app)
+            .post('/api/ai/tutor')
+            .set(auth(data.tokens.student))
+            .send({ lessonId: data.lessons[0]._id, message: 'اشرح لي المطلوب' });
+
+        assert.equal(response.status, 200);
+        assert.equal(response.body.status, 'answered');
+        assert.match(response.body.message, /ابدأ بمشاهدة الفيديو/);
+
+        const exchanges = await AiTutorExchange.find({ student: data.student._id, lesson: data.lessons[0]._id });
+        assert.equal(exchanges.length, 1);
+        assert.equal(exchanges[0].status, 'answered');
+    } finally {
+        if (previousApiKey) {
+            process.env.OPENAI_API_KEY = previousApiKey;
+        } else {
+            delete process.env.OPENAI_API_KEY;
+        }
+        global.fetch = previousFetch;
+    }
 });
 
 test('legacy completed lesson progress is preserved and backfilled', async () => {
