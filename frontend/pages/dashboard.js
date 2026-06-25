@@ -98,6 +98,62 @@ const formatArabicDate = (date) => {
     return new Date(date).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
 };
 
+const buildAchievements = ({ courses, enrolledCourses, completedLessons, submissions, pendingReviews, ageGroup }) => {
+    const completedCourses = courses.filter((course) => course.progress?.status === 'completed').length;
+    const junior = ageGroup === '5-8';
+
+    return [
+        {
+            id: 'first-course',
+            icon: '🚀',
+            title: junior ? 'بدأت المغامرة' : 'بداية المسار',
+            description: junior ? 'فتحت أول دورة في عبقورا.' : 'سجلت في أول دورة تعليمية.',
+            unlocked: enrolledCourses.length > 0,
+            progress: `${enrolledCourses.length}/1`,
+        },
+        {
+            id: 'first-lesson',
+            icon: junior ? '⭐' : '✅',
+            title: junior ? 'أول نجمة' : 'أول درس مكتمل',
+            description: junior ? 'أنهيت أول خطوة في التعلم.' : 'أكملت أول درس واعتمده المعلم.',
+            unlocked: completedLessons > 0,
+            progress: `${completedLessons}/1`,
+        },
+        {
+            id: 'steady-learner',
+            icon: '🔥',
+            title: junior ? 'بطل الخمس نجوم' : 'متعلم منتظم',
+            description: junior ? 'اجمع 5 دروس مكتملة.' : 'أكمل 5 دروس لتثبت انتظامك.',
+            unlocked: completedLessons >= 5,
+            progress: `${Math.min(completedLessons, 5)}/5`,
+        },
+        {
+            id: 'project-maker',
+            icon: '🛠️',
+            title: junior ? 'صانع صغير' : 'صانع مشروع',
+            description: junior ? 'أرسلت مشروعًا ليراه المعلم.' : 'قدمت مشروعًا برمجيًا للمراجعة.',
+            unlocked: submissions.length > 0,
+            progress: `${submissions.length}/1`,
+        },
+        {
+            id: 'review-ready',
+            icon: '⏳',
+            title: junior ? 'بانتظار التشجيع' : 'جاهز للمراجعة',
+            description: junior ? 'أرسلت درسًا وينتظر المعلم.' : 'أرسلت إنجازًا بانتظار اعتماد المعلم.',
+            unlocked: pendingReviews.length > 0,
+            progress: `${pendingReviews.length}/1`,
+        },
+        {
+            id: 'course-hero',
+            icon: '🏆',
+            title: junior ? 'بطل الدورة' : 'منهي الدورة',
+            description: junior ? 'أكمل دورة كاملة لتحصل على الكأس.' : 'أكمل دورة كاملة وافتح شهادة الإنجاز.',
+            unlocked: completedCourses > 0,
+            progress: `${completedCourses}/1`,
+        },
+    ];
+};
+
 export default function Dashboard() {
     const router = useRouter();
     const [courses, setCourses] = useState([]);
@@ -221,6 +277,15 @@ export default function Dashboard() {
         { label: ageProfile.statLabels[1], value: `${completedLessons}/${totalLessons || 0}`, icon: profile.ageGroup === '5-8' ? '⭐' : '✅' },
         { label: ageProfile.statLabels[2], value: submissions.length, icon: '🛠️' },
     ];
+    const achievements = buildAchievements({
+        courses,
+        enrolledCourses,
+        completedLessons,
+        submissions,
+        pendingReviews,
+        ageGroup: profile.ageGroup,
+    });
+    const unlockedAchievements = achievements.filter((item) => item.unlocked).length;
 
     return (
     <Layout>
@@ -336,6 +401,32 @@ export default function Dashboard() {
                                 <p>{item.label}</p>
                             </div>
                         ))}
+                    </div>
+
+                    <div className="student-achievements-panel">
+                        <div className="section-heading compact-heading">
+                            <div>
+                                <span className="eyebrow">الإنجازات</span>
+                                <h2>{profile.ageGroup === '5-8' ? 'نجومك وشاراتك 🌟' : 'شارات التقدم 🏅'}</h2>
+                            </div>
+                            <p>{unlockedAchievements} من {achievements.length} شارات مفتوحة.</p>
+                        </div>
+
+                        <div className="achievement-grid">
+                            {achievements.map((achievement) => (
+                                <article
+                                    key={achievement.id}
+                                    className={`achievement-card ${achievement.unlocked ? 'is-unlocked' : 'is-locked'}`}
+                                >
+                                    <span className="achievement-icon" aria-hidden="true">{achievement.icon}</span>
+                                    <div>
+                                        <strong>{achievement.title}</strong>
+                                        <p>{achievement.description}</p>
+                                        <small>{achievement.unlocked ? 'مفتوحة الآن' : `التقدم: ${achievement.progress}`}</small>
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Progress Visualizer */}
