@@ -4,19 +4,77 @@ import Layout from '../../components/Layout';
 import API from '../../utils/api';
 import { withBasePath } from '../../utils/paths';
 
+const AGE_GUIDANCE = {
+    '5-8': {
+        label: '5-8 سنوات 🧸',
+        tone: 'مرحلة الاستكشاف',
+        note: 'الأفضل جلسات قصيرة: فيديو واحد، تمرين واحد، وتشجيع سريع بعد كل محاولة.',
+        homeAction: 'اسأل الطفل: ما الشيء الممتع الذي صنعته اليوم؟',
+    },
+    '9-12': {
+        label: '9-12 سنة 🚀',
+        tone: 'مرحلة بناء المهارات',
+        note: 'هذا العمر يستفيد من هدف يومي واضح: درس واحد أو جزء صغير من مشروع.',
+        homeAction: 'اطلب منه أن يشرح لك خطوة واحدة من الحل بصوته.',
+    },
+    '13-16': {
+        label: '13-16 سنة 💻',
+        tone: 'مرحلة التحدي',
+        note: 'الطالب الأكبر يحتاج مساحة استقلال مع مراجعة أسبوعية للتقدم والملاحظات.',
+        homeAction: 'ناقش معه ما الذي سيحسّنه في الحل القادم.',
+    },
+    default: {
+        label: 'غير محدد',
+        tone: 'متابعة عامة',
+        note: 'اختيار الفئة العمرية يساعد عبقورا على عرض نصائح أدق للطالب وولي الأمر.',
+        homeAction: 'ابدأ بمتابعة درس واحد ثم راقب ملاحظات المعلم.',
+    },
+};
+
+const STATUS_META = {
+    completed: ['مكتمل', '✅'],
+    awaiting_approval: ['بانتظار المعلم', '⏳'],
+    in_progress: ['قيد التعلم', '◐'],
+    not_started: ['لم يبدأ', '○'],
+};
+
+const getAgeGuidance = (ageGroup) => AGE_GUIDANCE[ageGroup] || AGE_GUIDANCE.default;
+
+const idOf = (value) => String(value?._id || value || '');
+
+const getCompletedIds = (progress) => new Set((progress?.completedLessons || []).map(idOf));
+
+const findLessonEntry = (progress, lessonId) => (
+    (progress?.lessonProgress || []).find((entry) => idOf(entry.lesson) === idOf(lessonId))
+);
+
+const getLessonStatus = (progress, lesson) => {
+    const completedIds = getCompletedIds(progress);
+    if (completedIds.has(idOf(lesson))) return 'completed';
+
+    const entry = findLessonEntry(progress, lesson._id);
+    if (entry?.status === 'awaiting_approval') return 'awaiting_approval';
+    if (entry?.status === 'in_progress') return 'in_progress';
+    return 'not_started';
+};
+
+const getScorePct = (result) => (
+    result?.total ? Math.round((Number(result.score || 0) / Number(result.total)) * 100) : 0
+);
+
 export default function ParentDashboard() {
     const router = useRouter();
     const [children, setChildren] = useState([]);
     const [selectedChild, setSelectedChild] = useState(null);
-    const [childProgress, setChildProgress] = useState(null);
+    const [progressByCourse, setProgressByCourse] = useState({});
     const [courses, setCourses] = useState([]);
-    
-    // Add child form state
+    const [loadingProgress, setLoadingProgress] = useState(false);
+
     const [studentEmail, setStudentEmail] = useState('');
     const [linkMessage, setLinkMessage] = useState('');
     const [linkError, setLinkError] = useState('');
     const [linking, setLinking] = useState(false);
-    
+
     const [message, setMessage] = useState('');
 
     useEffect(() => {
@@ -38,35 +96,42 @@ export default function ParentDashboard() {
 
     const fetchInitialData = async () => {
         try {
-            // Fetch linked children list
-            const kidsRes = await API.get('/auth/linked-students');
-            setChildren(kidsRes.data);
+            const [kidsRes, coursesRes] = await Promise.all([
+                API.get('/auth/linked-students'),
+                API.get('/courses'),
+            ]);
 
-            // Fetch course list
-            const coursesRes = await API.get('/courses');
-            setCourses(coursesRes.data);
+            const loadedChildren = kidsRes.data || [];
+            const loadedCourses = coursesRes.data || [];
+            setChildren(loadedChildren);
+            setCourses(loadedCourses);
 
-            if (kidsRes.data.length > 0) {
-                selectChild(kidsRes.data[0], coursesRes.data[0]?._id);
+            if (loadedChildren.length > 0) {
+                await selectChild(loadedChildren[0], loadedCourses);
             }
         } catch (err) {
             setMessage('تعذر تحميل بيانات لوحة المتابعة');
         }
     };
 
-    const selectChild = async (child, courseId) => {
+    const selectChild = async (child, courseList = courses) => {
         setSelectedChild(child);
-        setChildProgress(null);
-        if (!courseId && courses.length > 0) {
-            courseId = courses[0]._id;
-        }
-        if (!courseId) return;
+        setProgressByCourse({});
+        if (!child || courseList.length === 0) return;
 
+        setLoadingProgress(true);
         try {
-            const res = await API.get(`/progress/student/${child._id}/${courseId}`);
-            setChildProgress(res.data);
-        } catch (err) {
-            console.error('تعذر تحميل تقدم الطالب');
+            const pairs = await Promise.all(courseList.map(async (course) => {
+                try {
+                    const res = await API.get(`/progress/student/${child._id}/${course._id}`);
+                    return [course._id, res.data || {}];
+                } catch (err) {
+                    return [course._id, { completedLessons: [], lessonProgress: [], quizResults: [] }];
+                }
+            }));
+            setProgressByCourse(Object.fromEntries(pairs));
+        } finally {
+            setLoadingProgress(false);
         }
     };
 
@@ -74,26 +139,22 @@ export default function ParentDashboard() {
         e.preventDefault();
         if (!studentEmail) return;
 
+        const emailToLink = studentEmail.trim().toLowerCase();
         setLinking(true);
         setLinkMessage('');
         setLinkError('');
 
         try {
-            const res = await API.post('/auth/link-student', { email: studentEmail });
+            const res = await API.post('/auth/link-student', { email: emailToLink });
             setLinkMessage(res.data.message || 'تم ربط حساب الابن بنجاح!');
             setStudentEmail('');
-            
-            // Re-fetch children list
+
             const kidsRes = await API.get('/auth/linked-students');
-            setChildren(kidsRes.data);
-            
-            // If nothing was selected, select the newly added kid
-            const newKid = kidsRes.data.find(k => k.email.toLowerCase() === studentEmail.toLowerCase());
-            if (newKid) {
-                selectChild(newKid);
-            } else if (kidsRes.data.length > 0) {
-                selectChild(kidsRes.data[kidsRes.data.length - 1]);
-            }
+            const loadedChildren = kidsRes.data || [];
+            setChildren(loadedChildren);
+
+            const newKid = loadedChildren.find((kid) => kid.email.toLowerCase() === emailToLink);
+            await selectChild(newKid || loadedChildren[loadedChildren.length - 1], courses);
         } catch (err) {
             setLinkError(err.response?.data?.message || 'عذراً، لم نتمكن من ربط الحساب. تأكد من بريد الطالب وسجلاته.');
         } finally {
@@ -101,179 +162,251 @@ export default function ParentDashboard() {
         }
     };
 
-    const getAgeLabel = (age) => {
-        if (age === '5-8') return '5-8 سنوات';
-        if (age === '9-12') return '9-12 سنة';
-        if (age === '13-16') return '13-16 سنة';
-        return 'غير محدد';
+    const getCourseSnapshot = (course) => {
+        const progress = progressByCourse[course._id] || {};
+        const lessons = course.lessons || [];
+        const totalLessons = course.lessonCount ?? lessons.length;
+        const completedIds = getCompletedIds(progress);
+        const completedCount = lessons.filter((lesson) => completedIds.has(idOf(lesson))).length;
+        const pendingLessons = lessons.filter((lesson) => getLessonStatus(progress, lesson) === 'awaiting_approval');
+        const retryLessons = lessons.filter((lesson) => {
+            const entry = findLessonEntry(progress, lesson._id);
+            return entry?.status === 'in_progress' && entry?.feedback && entry?.reviewedAt;
+        });
+        const nextLesson = lessons.find((lesson) => !completedIds.has(idOf(lesson))) || null;
+        const percentage = totalLessons ? Math.round((completedCount / totalLessons) * 100) : 0;
+        const quizResults = progress.quizResults || [];
+        const passedQuizzes = quizResults.filter((result) => getScorePct(result) >= 70).length;
+
+        return {
+            course,
+            progress,
+            lessons,
+            totalLessons,
+            completedCount,
+            pendingLessons,
+            retryLessons,
+            nextLesson,
+            percentage,
+            quizResults,
+            passedQuizzes,
+            hasActivity: Boolean(progress._id || completedCount || pendingLessons.length || quizResults.length || progress.certificateUrl),
+        };
     };
 
-    const calculatePct = (course) => {
-        if (!childProgress || !course.lessons) return 0;
-        const total = course.lessons.length;
-        const completed = childProgress.completedLessons ? childProgress.completedLessons.length : 0;
-        return total > 0 ? Math.round((completed / total) * 100) : 0;
-    };
+    const childGuidance = getAgeGuidance(selectedChild?.ageGroup);
+    const courseSnapshots = courses.map(getCourseSnapshot);
+    const totalLessons = courseSnapshots.reduce((sum, item) => sum + item.totalLessons, 0);
+    const totalCompleted = courseSnapshots.reduce((sum, item) => sum + item.completedCount, 0);
+    const overallPct = totalLessons ? Math.round((totalCompleted / totalLessons) * 100) : 0;
+    const pendingCount = courseSnapshots.reduce((sum, item) => sum + item.pendingLessons.length, 0);
+    const retryCount = courseSnapshots.reduce((sum, item) => sum + item.retryLessons.length, 0);
+    const certificateCount = courseSnapshots.filter((item) => item.progress?.certificateUrl).length;
+    const activeCourseCount = courseSnapshots.filter((item) => item.hasActivity && item.percentage < 100).length;
+    const nextSnapshot = courseSnapshots.find((item) => item.pendingLessons.length)
+        || courseSnapshots.find((item) => item.retryLessons.length)
+        || courseSnapshots.find((item) => item.nextLesson && item.hasActivity)
+        || courseSnapshots[0];
 
     return (
         <Layout>
-            <section className="page shell rtl">
-                <div className="dashboard-header">
+            <section className="page shell rtl parent-dashboard-page">
+                <div className="parent-hero-card">
                     <div>
-                        <h1>لوحة أولياء الأمور 👨‍👩‍👦</h1>
-                        <p>تابع تقدم أبنائك، نتائج اختباراتهم، وشهاداتهم المعتمدة.</p>
+                        <span className="eyebrow">لوحة الأسرة</span>
+                        <h1>متابعة تعلم الأبناء 👨‍👩‍👦</h1>
+                        <p>نظرة واضحة على تقدم كل طفل، الدروس المنتظرة، الشهادات، وماذا يمكن أن تفعل الأسرة اليوم.</p>
+                    </div>
+                    <div className="parent-hero-summary">
+                        <strong>{children.length}</strong>
+                        <span>طالب مربوط</span>
                     </div>
                 </div>
 
                 {message && <div className="error-box">{message}</div>}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '32px', alignItems: 'start' }}>
-                    
-                    {/* Right Column: Manage Children & Link Forms */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        
-                        {/* Link child account */}
-                        <div className="card">
+                <div className="parent-dashboard-layout">
+                    <aside className="parent-sidebar">
+                        <div className="card parent-link-card">
                             <h3>ربط حساب ابن جديد 🔗</h3>
-                            {linkMessage && <div className="success-box" style={{ fontSize: '0.85rem', padding: '10px' }}>{linkMessage}</div>}
-                            {linkError && <div className="error-box" style={{ fontSize: '0.85rem', padding: '10px' }}>{linkError}</div>}
-                            
+                            {linkMessage && <div className="success-box compact-alert">{linkMessage}</div>}
+                            {linkError && <div className="error-box compact-alert">{linkError}</div>}
+
                             <form onSubmit={handleLinkStudent}>
-                                <label style={{ fontSize: '0.85rem' }}>البريد الإلكتروني للطالب</label>
-                                <input 
-                                    type="email" 
+                                <label>البريد الإلكتروني للطالب</label>
+                                <input
+                                    type="email"
                                     value={studentEmail}
                                     onChange={(e) => setStudentEmail(e.target.value)}
                                     placeholder="student@example.com"
-                                    style={{ padding: '10px', fontSize: '0.9rem', marginBottom: '12px' }}
                                     required
                                 />
-                                <button type="submit" className="button" style={{ width: '100%', padding: '10px' }} disabled={linking}>
+                                <button type="submit" className="button" disabled={linking}>
                                     {linking ? 'جاري الربط...' : 'ربط الحساب ➕'}
                                 </button>
                             </form>
                         </div>
 
-                        {/* Linked Children List */}
-                        <div className="card">
-                            <h3>قائمة الأبناء المربوطين 👥</h3>
+                        <div className="card parent-children-card">
+                            <h3>الأبناء المربوطون 👥</h3>
                             {children.length === 0 ? (
-                                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                                    لم تقم بربط أي حساب طالب بعد.
-                                </p>
+                                <p className="muted-copy">لم تقم بربط أي حساب طالب بعد.</p>
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
-                                    {children.map((child) => (
-                                        <button
-                                            key={child._id}
-                                            onClick={() => selectChild(child)}
-                                            className={`option ${selectedChild && selectedChild._id === child._id ? 'selected' : ''}`}
-                                            style={{ textAlign: 'right', padding: '12px 16px', fontSize: '0.95rem' }}
-                                        >
-                                            <div style={{ fontWeight: 'bold' }}>{child.name}</div>
-                                            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>
-                                                {child.email} • {getAgeLabel(child.ageGroup)}
-                                            </div>
-                                        </button>
-                                    ))}
+                                <div className="parent-child-list">
+                                    {children.map((child) => {
+                                        const selected = selectedChild?._id === child._id;
+                                        const guidance = getAgeGuidance(child.ageGroup);
+                                        return (
+                                            <button
+                                                key={child._id}
+                                                type="button"
+                                                onClick={() => selectChild(child)}
+                                                className={`parent-child-button ${selected ? 'selected' : ''}`}
+                                            >
+                                                <strong>{child.name}</strong>
+                                                <span>{child.email}</span>
+                                                <small>{guidance.label}</small>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </aside>
 
-                    {/* Left Column: Selected Child Details */}
-                    <div>
+                    <main className="parent-main-panel">
                         {selectedChild ? (
-                            <div className="card" style={{ minHeight: '400px' }}>
-                                <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '24px' }}>
-                                    <h2>تقرير المتابعة: {selectedChild.name} 🎒</h2>
-                                    <p>البريد الإلكتروني: {selectedChild.email} • الفئة العمرية: {getAgeLabel(selectedChild.ageGroup)}</p>
+                            <>
+                                <div className="parent-student-header">
+                                    <div>
+                                        <span className="eyebrow">تقرير الطالب</span>
+                                        <h2>{selectedChild.name} 🎒</h2>
+                                        <p>{selectedChild.email} · {childGuidance.label}</p>
+                                    </div>
+                                    <div className="parent-age-guidance">
+                                        <strong>{childGuidance.tone}</strong>
+                                        <p>{childGuidance.note}</p>
+                                    </div>
                                 </div>
 
-                                {courses.length > 0 && (
+                                <div className="parent-stat-grid">
+                                    <div className="parent-stat-card">
+                                        <span>📈</span>
+                                        <strong>{overallPct}%</strong>
+                                        <p>التقدم الكلي</p>
+                                    </div>
+                                    <div className="parent-stat-card">
+                                        <span>✅</span>
+                                        <strong>{totalCompleted}/{totalLessons || 0}</strong>
+                                        <p>دروس مكتملة</p>
+                                    </div>
+                                    <div className="parent-stat-card">
+                                        <span>⏳</span>
+                                        <strong>{pendingCount}</strong>
+                                        <p>بانتظار المعلم</p>
+                                    </div>
+                                    <div className="parent-stat-card">
+                                        <span>🏆</span>
+                                        <strong>{certificateCount}</strong>
+                                        <p>شهادات</p>
+                                    </div>
+                                </div>
+
+                                <div className="parent-next-action-card">
                                     <div>
-                                        {courses.map((course) => {
-                                            const pct = calculatePct(course);
-                                            return (
-                                                <div key={course._id} style={{ marginBottom: '32px' }}>
-                                                    <h3>الدورة الحالية: {course.title}</h3>
-                                                    
-                                                    {/* Progress bar */}
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginTop: '12px' }}>
-                                                        <span>نسبة الإتمام</span>
-                                                        <span>{pct}% مكتمل</span>
-                                                    </div>
-                                                    <div className="progress-bar-container" style={{ margin: '8px 0 20px' }}>
-                                                        <div className="progress-bar" style={{ width: `${pct}%` }}></div>
-                                                    </div>
+                                        <span className="eyebrow">ماذا أفعل اليوم؟</span>
+                                        <h3>
+                                            {pendingCount
+                                                ? 'هناك درس بانتظار اعتماد المعلم'
+                                                : retryCount
+                                                    ? 'يوجد درس يحتاج إعادة محاولة'
+                                                    : nextSnapshot?.nextLesson
+                                                        ? `الخطوة التالية: الدرس ${nextSnapshot.nextLesson.order}`
+                                                        : 'كل شيء هادئ الآن'}
+                                        </h3>
+                                        <p>
+                                            {pendingCount
+                                                ? 'لا يحتاج ولي الأمر إجراءً الآن، فقط تابع حالة الاعتماد من المعلم.'
+                                                : retryCount
+                                                    ? 'ساعد الطالب على قراءة ملاحظة المعلم بهدوء ثم إعادة المحاولة.'
+                                                    : childGuidance.homeAction}
+                                        </p>
+                                    </div>
+                                    <span aria-hidden="true">🧭</span>
+                                </div>
 
-                                                    {/* Child Certificate link */}
-                                                    {childProgress && childProgress.certificateUrl && (
-                                                        <div className="success-box" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '14px' }}>
-                                                            <span>🏆 حصل {selectedChild.name} على شهادة إتمام الدورة!</span>
-                                                            <a href={withBasePath(childProgress.certificateUrl)} target="_blank" rel="noopener noreferrer" className="button btn-success small-button" style={{ textDecoration: 'none' }}>
-                                                                عرض الشهادة المعتمدة 🎓
-                                                            </a>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Course Lessons Checklist */}
-                                                    <div style={{ marginTop: '24px' }}>
-                                                        <h4>الدروس المكتملة 📋</h4>
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                                                            {course.lessons?.map((lesson, idx) => {
-                                                                const isDone = childProgress?.completedLessons?.some(l => (l._id || l) === lesson._id);
-                                                                return (
-                                                                    <div key={lesson._id} style={{ display: 'flex', justifyItems: 'center', gap: '12px', padding: '10px 14px', background: '#f8fafc', borderRadius: '10px', fontSize: '0.9rem' }}>
-                                                                        <span>{isDone ? '✅' : '⏳'}</span>
-                                                                        <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'var(--text)' }}>
-                                                                            الدرس {idx + 1}: {lesson.title}
-                                                                        </span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
+                                {loadingProgress ? (
+                                    <div className="empty-state-card">
+                                        <strong>جاري تحميل تقدم الطالب...</strong>
+                                    </div>
+                                ) : (
+                                    <div className="parent-course-list">
+                                        {courseSnapshots.map((snapshot) => (
+                                            <article key={snapshot.course._id} className="parent-course-card">
+                                                <div className="parent-course-header">
+                                                    <div>
+                                                        <span className="eyebrow">{snapshot.course.ageRange || snapshot.course.level}</span>
+                                                        <h3>{snapshot.course.title}</h3>
                                                     </div>
-
-                                                    {/* Quiz scores history */}
-                                                    <div style={{ marginTop: '32px' }}>
-                                                        <h4>درجات الاختبارات ✍️</h4>
-                                                        {!childProgress || !childProgress.quizResults || childProgress.quizResults.length === 0 ? (
-                                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                                                                لم يقم الطالب بحل أي اختبارات بعد.
-                                                            </p>
-                                                        ) : (
-                                                            <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginTop: '12px' }}>
-                                                                {childProgress.quizResults.map((res, i) => {
-                                                                    const scorePct = Math.round((res.score / res.total) * 100);
-                                                                    const passed = scorePct >= 70;
-                                                                    return (
-                                                                        <div key={i} className="card" style={{ padding: '16px', background: '#f8fafc', borderRadius: '16px' }}>
-                                                                            <h5 style={{ fontSize: '0.9rem', marginBottom: '6px' }}>الاختبار {i + 1}</h5>
-                                                                            <p style={{ fontSize: '1.1rem', fontWeight: 'bold', color: passed ? 'var(--success)' : 'var(--danger)', margin: '4px 0' }}>
-                                                                                {res.score} / {res.total} ({scorePct}%)
-                                                                            </p>
-                                                                            <span className={`tag ${passed ? 'status-completed' : 'status-locked'}`} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
-                                                                                {passed ? 'ناجح ✓' : 'لم يجتز بعد ❌'}
-                                                                            </span>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    <strong>{snapshot.percentage}%</strong>
                                                 </div>
-                                            );
-                                        })}
+
+                                                <div className="progress-bar-container">
+                                                    <div className="progress-bar" style={{ width: `${snapshot.percentage}%` }} />
+                                                </div>
+
+                                                <div className="parent-course-meta">
+                                                    <span>✅ {snapshot.completedCount} مكتمل</span>
+                                                    <span>⏳ {snapshot.pendingLessons.length} مراجعة</span>
+                                                    <span>✍️ {snapshot.passedQuizzes}/{snapshot.quizResults.length || 0} اختبارات ناجحة</span>
+                                                </div>
+
+                                                {snapshot.progress?.certificateUrl && (
+                                                    <div className="parent-certificate-strip">
+                                                        <span>🏆 حصل الطالب على شهادة هذه الدورة</span>
+                                                        <a href={withBasePath(snapshot.progress.certificateUrl)} target="_blank" rel="noopener noreferrer" className="button btn-success small-button">
+                                                            عرض الشهادة
+                                                        </a>
+                                                    </div>
+                                                )}
+
+                                                {snapshot.retryLessons.length > 0 && (
+                                                    <div className="parent-alert-strip retry">
+                                                        <strong>ملاحظات تحتاج متابعة</strong>
+                                                        <p>{snapshot.retryLessons[0].title}: {findLessonEntry(snapshot.progress, snapshot.retryLessons[0]._id)?.feedback}</p>
+                                                    </div>
+                                                )}
+
+                                                <div className="parent-lesson-mini-list">
+                                                    {snapshot.lessons.slice(0, 8).map((lesson) => {
+                                                        const status = getLessonStatus(snapshot.progress, lesson);
+                                                        const [label, icon] = STATUS_META[status] || STATUS_META.not_started;
+                                                        return (
+                                                            <div key={lesson._id} className={`parent-lesson-mini state-${status}`}>
+                                                                <span>{icon}</span>
+                                                                <strong>درس {lesson.order}</strong>
+                                                                <p>{lesson.title}</p>
+                                                                <small>{label}</small>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {snapshot.lessons.length > 8 && (
+                                                    <p className="muted-copy mini-list-note">يعرض أول 8 دروس فقط لتبقى المتابعة سريعة.</p>
+                                                )}
+                                            </article>
+                                        ))}
                                     </div>
                                 )}
-                            </div>
+                            </>
                         ) : (
-                            <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', color: 'var(--text-muted)' }}>
-                                يرجى اختيار طالب من القائمة الجانبية أو ربط حساب طالب جديد لعرض تقرير التقدم.
+                            <div className="empty-state-card parent-empty-state">
+                                <strong>اختر طالبًا لعرض تقرير التقدم.</strong>
+                                <p>يمكنك ربط حساب طالب من البطاقة الجانبية باستخدام بريده الإلكتروني.</p>
                             </div>
                         )}
-                    </div>
+                    </main>
                 </div>
             </section>
         </Layout>
