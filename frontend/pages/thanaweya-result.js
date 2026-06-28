@@ -55,6 +55,12 @@ const quickStats = [
     ['سريع', 'حاسبة نسبة داخل الصفحة'],
 ];
 
+const motionCards = [
+    ['1', 'افتح الرابط الرسمي', '🔗'],
+    ['2', 'تأكد من الأمان', '🛡️'],
+    ['3', 'احسب النسبة', '🧮'],
+];
+
 export default function ThanaweyaResultPage() {
     const [activeMode, setActiveMode] = useState(journeyModes[0].id);
     const [score, setScore] = useState('');
@@ -153,9 +159,24 @@ export default function ThanaweyaResultPage() {
             </Head>
 
             <main className="page shell rtl public-result-page result-dynamic-page">
-                <section className="result-dynamic-hero">
+                <nav className="result-floating-header" aria-label="تنقل سريع داخل صفحة النتيجة">
+                    <Link href="/" className="result-floating-brand">عبقورا</Link>
+                    <div className="result-floating-links">
+                        <a href="#result-top">الرئيسية</a>
+                        <a href="#result-calculator">الحاسبة</a>
+                        <a href="#result-plan">ماذا بعد؟</a>
+                    </div>
+                    <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="small-button">
+                        الرابط الرسمي
+                    </a>
+                </nav>
+
+                <section className="result-dynamic-hero" id="result-top">
                     <div className="result-hero-orb one" aria-hidden="true" />
                     <div className="result-hero-orb two" aria-hidden="true" />
+                    <div className="result-floating-shape shape-one" aria-hidden="true">410</div>
+                    <div className="result-floating-shape shape-two" aria-hidden="true">%</div>
+                    <div className="result-floating-shape shape-three" aria-hidden="true">آمن</div>
 
                     <div className="result-hero-copy">
                         <span className="eyebrow">خدمة عامة من عبقورا</span>
@@ -182,6 +203,28 @@ export default function ThanaweyaResultPage() {
                     </div>
 
                     <aside className="result-live-card" aria-live="polite">
+                        <div className="result-motion-stage" aria-label="عرض متحرك لخطوات الصفحة">
+                            <div className="motion-browser">
+                                <div className="motion-browser-top">
+                                    <span />
+                                    <span />
+                                    <span />
+                                </div>
+                                <div className="motion-browser-body">
+                                    <div className="motion-scan-line" aria-hidden="true" />
+                                    {motionCards.map(([number, label, icon]) => (
+                                        <div className="motion-step-row" key={label}>
+                                            <b>{number}</b>
+                                            <span>{icon}</span>
+                                            <small>{label}</small>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="motion-floating-badge badge-official">رسمي</div>
+                            <div className="motion-floating-badge badge-private">لا نخزن بياناتك</div>
+                        </div>
+
                         <span className="result-live-icon" aria-hidden="true">{selectedMode.icon}</span>
                         <div>
                             <strong>{selectedMode.title}</strong>
@@ -197,6 +240,11 @@ export default function ThanaweyaResultPage() {
                             {selectedMode.actionLabel}
                         </a>
                     </aside>
+
+                    <a href="#result-calculator" className="result-scroll-cue" aria-label="انتقل إلى الحاسبة">
+                        <span>مرّر للأسفل</span>
+                        <b aria-hidden="true">↓</b>
+                    </a>
                 </section>
 
                 <section className="result-quick-stats" aria-label="لماذا هذه الصفحة آمنة؟">
@@ -313,7 +361,7 @@ export default function ThanaweyaResultPage() {
                     ))}
                 </section>
 
-                <section className="result-growth-card">
+                <section className="result-growth-card" id="result-plan">
                     <div>
                         <span className="eyebrow">من النتيجة إلى المهارة</span>
                         <h2>ابدأ بناء مهارة حقيقية بعد الثانوية</h2>
