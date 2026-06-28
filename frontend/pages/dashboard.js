@@ -344,26 +344,6 @@ export default function Dashboard() {
 
                     {message && <div className="error-box">{message}</div>}
 
-                    <div className="role-priority-card student-priority-card">
-                        <div>
-                            <span className="eyebrow">نرتب الصفحة لك</span>
-                            <h2>ابدأ من هنا ولا تنشغل بكل التفاصيل</h2>
-                            <p>أهم شيء اليوم هو درس واحد فقط. الإنجازات والدورات والمشاريع موجودة بالأسفل عندما تحتاجها.</p>
-                        </div>
-                        <div className="priority-action-list">
-                            {activeCourse && (
-                                <button
-                                    type="button"
-                                    onClick={() => router.push({ pathname: '/course', query: { id: activeCourse._id } })}
-                                >
-                                    1. افتح الدرس التالي
-                                </button>
-                            )}
-                            <a href="#student-achievements">2. شوف إنجازاتك</a>
-                            <a href="#student-courses">3. الدورات والمشاريع</a>
-                        </div>
-                    </div>
-
                     <div className="student-home-grid">
                         <article className="student-insight-card featured">
                             <span className="insight-icon" aria-hidden="true">
@@ -423,179 +403,203 @@ export default function Dashboard() {
                         ))}
                     </div>
 
-                    <div id="student-achievements" className="student-achievements-panel">
-                        <div className="section-heading compact-heading">
-                            <div>
-                                <span className="eyebrow">الإنجازات</span>
-                                <h2>{profile.ageGroup === '5-8' ? 'نجومك وشاراتك 🌟' : 'شارات التقدم 🏅'}</h2>
+                    <details id="student-achievements" className="simple-disclosure">
+                        <summary>
+                            <span>🏅 الإنجازات والشارات</span>
+                            <small>{unlockedAchievements} من {achievements.length} مفتوحة</small>
+                        </summary>
+                        <div className="student-achievements-panel">
+                            <div className="section-heading compact-heading">
+                                <div>
+                                    <span className="eyebrow">الإنجازات</span>
+                                    <h2>{profile.ageGroup === '5-8' ? 'نجومك وشاراتك 🌟' : 'شارات التقدم 🏅'}</h2>
+                                </div>
+                                <p>{unlockedAchievements} من {achievements.length} شارات مفتوحة.</p>
                             </div>
-                            <p>{unlockedAchievements} من {achievements.length} شارات مفتوحة.</p>
-                        </div>
 
-                        <div className="achievement-grid">
-                            {achievements.map((achievement) => (
-                                <article
-                                    key={achievement.id}
-                                    className={`achievement-card ${achievement.unlocked ? 'is-unlocked' : 'is-locked'}`}
-                                >
-                                    <span className="achievement-icon" aria-hidden="true">{achievement.icon}</span>
-                                    <div>
-                                        <strong>{achievement.title}</strong>
-                                        <p>{achievement.description}</p>
-                                        <small>{achievement.unlocked ? 'مفتوحة الآن' : `التقدم: ${achievement.progress}`}</small>
-                                    </div>
-                                </article>
-                            ))}
+                            <div className="achievement-grid">
+                                {achievements.map((achievement) => (
+                                    <article
+                                        key={achievement.id}
+                                        className={`achievement-card ${achievement.unlocked ? 'is-unlocked' : 'is-locked'}`}
+                                    >
+                                        <span className="achievement-icon" aria-hidden="true">{achievement.icon}</span>
+                                        <div>
+                                            <strong>{achievement.title}</strong>
+                                            <p>{achievement.description}</p>
+                                            <small>{achievement.unlocked ? 'مفتوحة الآن' : `التقدم: ${achievement.progress}`}</small>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    </details>
 
                     {/* Progress Visualizer */}
                     {courses.length > 0 && (
-                        <div className="learning-progress-panel">
+                        <details className="simple-disclosure">
+                            <summary>
+                                <span>📈 تفاصيل التقدم والشهادة</span>
+                                <small>{enrolledCourses.length ? `${completedLessons}/${totalLessons || 0} درس مكتمل` : 'لم تبدأ بعد'}</small>
+                            </summary>
+                            <div className="learning-progress-panel">
+                                <div className="section-heading compact-heading">
+                                    <div>
+                                        <span className="eyebrow">المتابعة اليومية</span>
+                                        <h2>{ageProfile.progressTitle} 📈</h2>
+                                    </div>
+                                    <p>{ageProfile.catalogHint}</p>
+                                </div>
+
+                                {enrolledCourses.length === 0 && (
+                                    <div className="empty-state-card">
+                                        <strong>لم تبدأ أي دورة بعد.</strong>
+                                        <p>اختر دورة من الدليل بالأسفل وسنفتح لك الدرس الأول فور التسجيل.</p>
+                                    </div>
+                                )}
+
+                                {enrolledCourses.map((course) => {
+                                    const pct = calculatePct(course);
+
+                                    return (
+                                        <div key={course._id} className="learning-course-card">
+                                            <div className="learning-course-header">
+                                                <div>
+                                                    <span className="eyebrow">دورة قيد التعلم</span>
+                                                    <h3>{course.title}</h3>
+                                                </div>
+                                                <strong>{pct}%</strong>
+                                            </div>
+
+                                            <div className="progress-bar-container">
+                                                <div
+                                                    className="progress-bar"
+                                                    style={{ width: `${pct}%` }}
+                                                />
+                                            </div>
+
+                                            <div className="certificate-mini-card">
+                                                <h3>شهادة الدورة 🏆</h3>
+
+                                                {course.progress?.certificateUrl ? (
+                                                    <div>
+                                                        <p className="certificate-ready-copy">
+                                                            تهانينا! لقد حصلت على شهادة الدورة.
+                                                        </p>
+
+                                                        <a
+                                                            href={withBasePath(course.progress.certificateUrl)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="button btn-success"
+                                                        >
+                                                            عرض وتحميل الشهادة المعتمدة 🎓
+                                                        </a>
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <p>
+                                                            احصل على شهادتك الموثقة عند إتمام جميع الدروس بنسبة 100% واجتياز كل الاختبارات بنسبة نجاح (70% فأكثر).
+                                                        </p>
+
+                                                        {certError && (
+                                                            <div className="error-box compact-alert multiline-alert">
+                                                                {certError}
+                                                            </div>
+                                                        )}
+
+                                                        {certSuccess && (
+                                                            <div className="success-box compact-alert">
+                                                                {certSuccess}
+                                                            </div>
+                                                        )}
+
+                                                        <button
+                                                            onClick={() => claimCertificate(course._id)}
+                                                            className="button"
+                                                            disabled={submittingCert}
+                                                        >
+                                                            {submittingCert
+                                                                ? 'جاري التحقق من الشروط...'
+                                                                : 'طلب شهادة الإتمام 🎖️'}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </details>
+                    )}
+
+                    <details id="student-courses" className="simple-disclosure" open={enrolledCourses.length === 0}>
+                        <summary>
+                            <span>📚 الدورات المتاحة</span>
+                            <small>{sortedCourses.length} دورة</small>
+                        </summary>
+                        <div className="catalog-dashboard-section">
                             <div className="section-heading compact-heading">
                                 <div>
-                                    <span className="eyebrow">المتابعة اليومية</span>
-                                    <h2>{ageProfile.progressTitle} 📈</h2>
+                                    <span className="eyebrow">دليل الدورات</span>
+                                    <h2>دوراتك التعليمية 📚</h2>
                                 </div>
                                 <p>{ageProfile.catalogHint}</p>
                             </div>
 
-                            {enrolledCourses.length === 0 && (
-                                <div className="empty-state-card">
-                                    <strong>لم تبدأ أي دورة بعد.</strong>
-                                    <p>اختر دورة من الدليل بالأسفل وسنفتح لك الدرس الأول فور التسجيل.</p>
-                                </div>
-                            )}
-
-                            {enrolledCourses.map((course) => {
-                                const pct = calculatePct(course);
-
-                                return (
-                                    <div key={course._id} className="learning-course-card">
-                                        <div className="learning-course-header">
-                                            <div>
-                                                <span className="eyebrow">دورة قيد التعلم</span>
-                                                <h3>{course.title}</h3>
-                                            </div>
-                                            <strong>{pct}%</strong>
-                                        </div>
-
-                                        <div className="progress-bar-container">
-                                            <div
-                                                className="progress-bar"
-                                                style={{ width: `${pct}%` }}
-                                            />
-                                        </div>
-
-                                        <div className="certificate-mini-card">
-                                            <h3>شهادة الدورة 🏆</h3>
-
-                                            {course.progress?.certificateUrl ? (
-                                                <div>
-                                                    <p className="certificate-ready-copy">
-                                                        تهانينا! لقد حصلت على شهادة الدورة.
-                                                    </p>
-
-                                                    <a
-                                                        href={withBasePath(course.progress.certificateUrl)}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="button btn-success"
-                                                    >
-                                                        عرض وتحميل الشهادة المعتمدة 🎓
-                                                    </a>
-                                                </div>
-                                            ) : (
-                                                <div>
-                                                    <p>
-                                                        احصل على شهادتك الموثقة عند إتمام جميع الدروس بنسبة 100% واجتياز كل الاختبارات بنسبة نجاح (70% فأكثر).
-                                                    </p>
-
-                                                    {certError && (
-                                                        <div className="error-box compact-alert multiline-alert">
-                                                            {certError}
-                                                        </div>
-                                                    )}
-
-                                                    {certSuccess && (
-                                                        <div className="success-box compact-alert">
-                                                            {certSuccess}
-                                                        </div>
-                                                    )}
-
-                                                    <button
-                                                        onClick={() => claimCertificate(course._id)}
-                                                        className="button"
-                                                        disabled={submittingCert}
-                                                    >
-                                                        {submittingCert
-                                                            ? 'جاري التحقق من الشروط...'
-                                                            : 'طلب شهادة الإتمام 🎖️'}
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    <div id="student-courses" className="catalog-dashboard-section">
-                        <div className="section-heading compact-heading">
-                            <div>
-                                <span className="eyebrow">دليل الدورات</span>
-                                <h2>دوراتك التعليمية 📚</h2>
-                            </div>
-                            <p>{ageProfile.catalogHint}</p>
-                        </div>
-
-                        <div className="grid-cards">
-                            {sortedCourses.map((course) => (
-                                <CourseCard
-                                    key={course._id}
-                                    course={course}
-                                    studentAgeGroup={profile.ageGroup}
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="projects-section">
-                        <div className="section-heading compact-heading">
-                            <div>
-                                <span className="eyebrow">إبداعاتك</span>
-                                <h2>مشاريعك البرمجية 🛠️</h2>
-                            </div>
-                        </div>
-
-                        {submissions.length === 0 ? (
-                            <div className="empty-state-card">
-                                <strong>لا توجد مشاريع بعد.</strong>
-                                <p>ابدأ بالدروس، وعندما تصل إلى مشروع سنحفظه هنا للمراجعة.</p>
-                            </div>
-                        ) : (
                             <div className="grid-cards">
-                                {submissions.map((sub) => (
-                                    <div key={sub._id} className="card project-card">
-                                        <h3>
-                                            الدرس: {sub.lesson?.title}
-                                        </h3>
-
-                                        <p>
-                                            تاريخ التقديم:
-                                            {' '}
-                                            {new Date(sub.createdAt).toLocaleDateString('ar-EG')}
-                                        </p>
-                                    </div>
+                                {sortedCourses.map((course) => (
+                                    <CourseCard
+                                        key={course._id}
+                                        course={course}
+                                        studentAgeGroup={profile.ageGroup}
+                                    />
                                 ))}
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    </details>
+
+                    <details className="simple-disclosure">
+                        <summary>
+                            <span>🛠️ المشاريع البرمجية</span>
+                            <small>{submissions.length} مشروع</small>
+                        </summary>
+                        <div className="projects-section">
+                            <div className="section-heading compact-heading">
+                                <div>
+                                    <span className="eyebrow">إبداعاتك</span>
+                                    <h2>مشاريعك البرمجية 🛠️</h2>
+                                </div>
+                            </div>
+
+                            {submissions.length === 0 ? (
+                                <div className="empty-state-card">
+                                    <strong>لا توجد مشاريع بعد.</strong>
+                                    <p>ابدأ بالدروس، وعندما تصل إلى مشروع سنحفظه هنا للمراجعة.</p>
+                                </div>
+                            ) : (
+                                <div className="grid-cards">
+                                    {submissions.map((sub) => (
+                                        <div key={sub._id} className="card project-card">
+                                            <h3>
+                                                الدرس: {sub.lesson?.title}
+                                            </h3>
+
+                                            <p>
+                                                تاريخ التقديم:
+                                                {' '}
+                                                {new Date(sub.createdAt).toLocaleDateString('ar-EG')}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </details>
 
                 </div>
 
-                <SideVideo />
+                {enrolledCourses.length === 0 && <SideVideo />}
 
             </div>
 

@@ -506,34 +506,6 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                <div className="role-priority-card admin-priority-card">
-                    <div>
-                        <span className="eyebrow">لوحة منظمة</span>
-                        <h2>اختر نوع العمل قبل الدخول في التفاصيل</h2>
-                        <p>الإدارة أصبحت غنية بالمعلومات، لذلك قسمناها إلى مراجعة الطلاب أو تجهيز المحتوى.</p>
-                    </div>
-                    <div className="priority-action-list">
-                        <button type="button" onClick={() => setActiveTab('submissions')}>
-                            1. مراجعة المشاريع
-                        </button>
-                        <button type="button" onClick={() => setActiveTab('curriculum')}>
-                            2. تجهيز الدروس والفيديوهات
-                        </button>
-                        <button type="button" onClick={() => setActiveTab('ads')}>
-                            3. إعلانات الصفحة الرئيسية
-                        </button>
-                        {priorityReadinessRow && (
-                            <button type="button" onClick={() => {
-                                setActiveTab('curriculum');
-                                setSelectedManageCourseId(priorityReadinessRow.course._id);
-                                fetchLessonsForCourse(priorityReadinessRow.course._id, priorityReadinessRow.lesson._id);
-                            }}>
-                                4. أصلح أول نقص محتوى
-                            </button>
-                        )}
-                    </div>
-                </div>
-
                 {/* Tabs */}
                 <div className="tabs-header">
                     <button 

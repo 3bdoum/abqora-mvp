@@ -66,11 +66,11 @@ export default function TeacherDashboard() {
     const [error, setError] = useState('');
     const [busy, setBusy] = useState('');
     const [studentSearch, setStudentSearch] = useState('');
-    const [lessonFilter, setLessonFilter] = useState('all');
+    const [lessonFilter, setLessonFilter] = useState('awaiting_approval');
     const [aiTutor, setAiTutor] = useState({ summary: { total: 0, answered: 0, blocked: 0, error: 0, studentsNeedingAttention: [] }, exchanges: [] });
     const [aiTutorLoading, setAiTutorLoading] = useState(false);
     const [aiTutorStatus, setAiTutorStatus] = useState('all');
-    const [aiTutorOpen, setAiTutorOpen] = useState(true);
+    const [aiTutorOpen, setAiTutorOpen] = useState(false);
 
     useEffect(() => {
         const role = localStorage.getItem('userRole');
@@ -110,7 +110,7 @@ export default function TeacherDashboard() {
     const selectStudent = async (student) => {
         setSelectedStudent(student);
         setDetails(null);
-        setLessonFilter('all');
+        setLessonFilter('awaiting_approval');
         setError('');
         try {
             const { data } = await API.get(`/teacher/students/${student._id}/courses`);
@@ -132,7 +132,7 @@ export default function TeacherDashboard() {
     const changeCourse = async (courseId) => {
         setSelectedCourseId(courseId);
         setDetails(null);
-        setLessonFilter('all');
+        setLessonFilter('awaiting_approval');
         try {
             await loadCourse(selectedStudent._id, courseId);
             await loadAiTutorInsights({ studentId: selectedStudent._id, courseId, status: aiTutorStatus });
@@ -213,7 +213,7 @@ export default function TeacherDashboard() {
             <section className="page teacher-page rtl">
                 <div className="teacher-heading">
                     <div><span className="eyebrow">الإشراف التعليمي</span><h1>لوحة المعلم</h1></div>
-                    <p>راجع طلبات الإكمال، ابحث عن الطلاب بسرعة، واستخدم فلاتر الدروس لاتخاذ الإجراء المناسب.</p>
+                    <p>الصفحة تبدأ الآن بما يحتاج انتباهك فقط، ويمكنك فتح التفاصيل عند الحاجة.</p>
                 </div>
 
                 {message && <div className="success-box">{message}</div>}
@@ -229,25 +229,12 @@ export default function TeacherDashboard() {
                     ))}
                 </div>
 
-                <div className="role-priority-card teacher-priority-card">
-                    <div>
-                        <span className="eyebrow">تنظيم سريع</span>
-                        <h2>ابدأ من المهمة الأهم ثم انتقل للتفاصيل</h2>
-                        <p>رتبنا الصفحة إلى 3 مناطق: مراجعة المساعد الذكي، اختيار الطالب، ثم إدارة الدروس.</p>
-                    </div>
-                    <div className="priority-action-list">
-                        <a href="#ai-tutor-review">1. أسئلة المساعد</a>
-                        <a href="#teacher-students">2. الطلاب</a>
-                        <a href="#teacher-lessons">3. الدروس والموافقات</a>
-                    </div>
-                </div>
-
                 <section id="ai-tutor-review" className="card ai-review-panel">
                     <div className="ai-review-header">
                         <div>
                             <span className="eyebrow">مراجعة المساعد الذكي</span>
                             <h2>ماذا يسأل الطلاب داخل الدروس؟</h2>
-                            <p>استخدم هذا الجزء لاكتشاف الدروس المربكة، طلبات الحل الكامل، أو الطلاب الذين يحتاجون متابعة بشرية.</p>
+                            <p>الملخص ظاهر دائمًا. افتح التفاصيل فقط عند وجود تنبيهات أو عندما تريد فهم أسئلة الطلاب.</p>
                         </div>
                         <button type="button" className="button btn-secondary" onClick={() => setAiTutorOpen((open) => !open)}>
                             {aiTutorOpen ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}
@@ -405,7 +392,7 @@ export default function TeacherDashboard() {
                                 <div id="teacher-lessons" className="teacher-lessons">
                                     {filteredLessons.length === 0 ? (
                                         <div className="card">
-                                            <p>لا توجد دروس مطابقة لهذا الفلتر.</p>
+                                        <p>لا توجد دروس بانتظار المراجعة الآن. يمكنك اختيار فلتر آخر من الأعلى عند الحاجة.</p>
                                         </div>
                                     ) : filteredLessons.map((lesson) => {
                                         const approving = busy === `${lesson._id}:approve`;

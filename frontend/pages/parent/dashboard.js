@@ -225,19 +225,6 @@ export default function ParentDashboard() {
 
                 {message && <div className="error-box">{message}</div>}
 
-                <div className="role-priority-card parent-priority-card">
-                    <div>
-                        <span className="eyebrow">متابعة بدون زحمة</span>
-                        <h2>ما يهم ولي الأمر اليوم</h2>
-                        <p>ابدأ باختيار الطفل، ثم اقرأ بطاقة “ماذا أفعل اليوم؟”. باقي التفاصيل موجودة عند الحاجة فقط.</p>
-                    </div>
-                    <div className="priority-action-list">
-                        <a href="#parent-children">1. اختر الطفل</a>
-                        <a href="#parent-next-action">2. نصيحة اليوم</a>
-                        <a href="#parent-course-progress">3. تقدم الدورات</a>
-                    </div>
-                </div>
-
                 <div className="parent-dashboard-layout">
                     <aside id="parent-children" className="parent-sidebar">
                         <div className="card parent-link-card">
@@ -348,70 +335,77 @@ export default function ParentDashboard() {
                                     <span aria-hidden="true">🧭</span>
                                 </div>
 
-                                {loadingProgress ? (
-                                    <div className="empty-state-card">
-                                        <strong>جاري تحميل تقدم الطالب...</strong>
-                                    </div>
-                                ) : (
-                                    <div id="parent-course-progress" className="parent-course-list">
-                                        {courseSnapshots.map((snapshot) => (
-                                            <article key={snapshot.course._id} className="parent-course-card">
-                                                <div className="parent-course-header">
-                                                    <div>
-                                                        <span className="eyebrow">{snapshot.course.ageRange || snapshot.course.level}</span>
-                                                        <h3>{snapshot.course.title}</h3>
+                                <details id="parent-course-progress" className="simple-disclosure parent-progress-disclosure">
+                                    <summary>
+                                        <span>📚 تفاصيل الدورات والدروس</span>
+                                        <small>{totalCompleted}/{totalLessons || 0} درس مكتمل</small>
+                                    </summary>
+
+                                    {loadingProgress ? (
+                                        <div className="empty-state-card">
+                                            <strong>جاري تحميل تقدم الطالب...</strong>
+                                        </div>
+                                    ) : (
+                                        <div className="parent-course-list">
+                                            {courseSnapshots.map((snapshot) => (
+                                                <article key={snapshot.course._id} className="parent-course-card">
+                                                    <div className="parent-course-header">
+                                                        <div>
+                                                            <span className="eyebrow">{snapshot.course.ageRange || snapshot.course.level}</span>
+                                                            <h3>{snapshot.course.title}</h3>
+                                                        </div>
+                                                        <strong>{snapshot.percentage}%</strong>
                                                     </div>
-                                                    <strong>{snapshot.percentage}%</strong>
-                                                </div>
 
-                                                <div className="progress-bar-container">
-                                                    <div className="progress-bar" style={{ width: `${snapshot.percentage}%` }} />
-                                                </div>
-
-                                                <div className="parent-course-meta">
-                                                    <span>✅ {snapshot.completedCount} مكتمل</span>
-                                                    <span>⏳ {snapshot.pendingLessons.length} مراجعة</span>
-                                                    <span>✍️ {snapshot.passedQuizzes}/{snapshot.quizResults.length || 0} اختبارات ناجحة</span>
-                                                </div>
-
-                                                {snapshot.progress?.certificateUrl && (
-                                                    <div className="parent-certificate-strip">
-                                                        <span>🏆 حصل الطالب على شهادة هذه الدورة</span>
-                                                        <a href={withBasePath(snapshot.progress.certificateUrl)} target="_blank" rel="noopener noreferrer" className="button btn-success small-button">
-                                                            عرض الشهادة
-                                                        </a>
+                                                    <div className="progress-bar-container">
+                                                        <div className="progress-bar" style={{ width: `${snapshot.percentage}%` }} />
                                                     </div>
-                                                )}
 
-                                                {snapshot.retryLessons.length > 0 && (
-                                                    <div className="parent-alert-strip retry">
-                                                        <strong>ملاحظات تحتاج متابعة</strong>
-                                                        <p>{snapshot.retryLessons[0].title}: {findLessonEntry(snapshot.progress, snapshot.retryLessons[0]._id)?.feedback}</p>
+                                                    <div className="parent-course-meta">
+                                                        <span>✅ {snapshot.completedCount} مكتمل</span>
+                                                        <span>⏳ {snapshot.pendingLessons.length} مراجعة</span>
+                                                        <span>✍️ {snapshot.passedQuizzes}/{snapshot.quizResults.length || 0} اختبارات ناجحة</span>
                                                     </div>
-                                                )}
 
-                                                <div className="parent-lesson-mini-list">
-                                                    {snapshot.lessons.slice(0, 8).map((lesson) => {
-                                                        const status = getLessonStatus(snapshot.progress, lesson);
-                                                        const [label, icon] = STATUS_META[status] || STATUS_META.not_started;
-                                                        return (
-                                                            <div key={lesson._id} className={`parent-lesson-mini state-${status}`}>
-                                                                <span>{icon}</span>
-                                                                <strong>درس {lesson.order}</strong>
-                                                                <p>{lesson.title}</p>
-                                                                <small>{label}</small>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
+                                                    {snapshot.progress?.certificateUrl && (
+                                                        <div className="parent-certificate-strip">
+                                                            <span>🏆 حصل الطالب على شهادة هذه الدورة</span>
+                                                            <a href={withBasePath(snapshot.progress.certificateUrl)} target="_blank" rel="noopener noreferrer" className="button btn-success small-button">
+                                                                عرض الشهادة
+                                                            </a>
+                                                        </div>
+                                                    )}
 
-                                                {snapshot.lessons.length > 8 && (
-                                                    <p className="muted-copy mini-list-note">يعرض أول 8 دروس فقط لتبقى المتابعة سريعة.</p>
-                                                )}
-                                            </article>
-                                        ))}
-                                    </div>
-                                )}
+                                                    {snapshot.retryLessons.length > 0 && (
+                                                        <div className="parent-alert-strip retry">
+                                                            <strong>ملاحظات تحتاج متابعة</strong>
+                                                            <p>{snapshot.retryLessons[0].title}: {findLessonEntry(snapshot.progress, snapshot.retryLessons[0]._id)?.feedback}</p>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="parent-lesson-mini-list">
+                                                        {snapshot.lessons.slice(0, 8).map((lesson) => {
+                                                            const status = getLessonStatus(snapshot.progress, lesson);
+                                                            const [label, icon] = STATUS_META[status] || STATUS_META.not_started;
+                                                            return (
+                                                                <div key={lesson._id} className={`parent-lesson-mini state-${status}`}>
+                                                                    <span>{icon}</span>
+                                                                    <strong>درس {lesson.order}</strong>
+                                                                    <p>{lesson.title}</p>
+                                                                    <small>{label}</small>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {snapshot.lessons.length > 8 && (
+                                                        <p className="muted-copy mini-list-note">يعرض أول 8 دروس فقط لتبقى المتابعة سريعة.</p>
+                                                    )}
+                                                </article>
+                                            ))}
+                                        </div>
+                                    )}
+                                </details>
                             </>
                         ) : (
                             <div className="empty-state-card parent-empty-state">

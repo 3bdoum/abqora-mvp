@@ -1484,70 +1484,68 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.78rem;
 }
 
-.role-priority-card {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(230px, 0.34fr);
-    gap: 18px;
-    align-items: center;
-    margin-bottom: 24px;
-    padding: 20px;
-    border: 1px solid rgba(79, 70, 229, 0.14);
-    border-radius: 24px;
-    background:
-        radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.1), transparent 30%),
-        rgba(255,255,255,0.9);
+.simple-disclosure {
+    margin: 16px 0 22px;
+    border: 1px solid rgba(79, 70, 229, 0.13);
+    border-radius: 22px;
+    background: rgba(255,255,255,0.88);
     box-shadow: var(--shadow-sm);
+    overflow: hidden;
 }
 
-.role-priority-card h2 {
-    margin: 4px 0 6px;
-}
-
-.role-priority-card p {
-    max-width: 760px;
-    font-size: 0.9rem;
-}
-
-.priority-action-list {
-    display: grid;
-    gap: 8px;
-}
-
-.priority-action-list a,
-.priority-action-list button {
-    width: 100%;
-    border: 1px solid rgba(79, 70, 229, 0.15);
-    border-radius: 14px;
-    padding: 10px 12px;
-    background: rgba(255,255,255,0.84);
-    color: var(--primary);
-    font-family: inherit;
-    font-size: 0.86rem;
-    font-weight: 900;
-    text-align: right;
-    text-decoration: none;
+.simple-disclosure > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 18px;
+    list-style: none;
     cursor: pointer;
-    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    font-weight: 900;
 }
 
-.priority-action-list a:hover,
-.priority-action-list button:hover {
-    transform: translateY(-1px);
-    border-color: rgba(79, 70, 229, 0.32);
+.simple-disclosure > summary::-webkit-details-marker {
+    display: none;
+}
+
+.simple-disclosure > summary::after {
+    content: '+';
+    width: 30px;
+    height: 30px;
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 999px;
     background: var(--primary-light);
+    color: var(--primary);
+    font-size: 1.2rem;
 }
 
-.student-priority-card {
-    border-color: rgba(16, 185, 129, 0.18);
+.simple-disclosure[open] > summary::after {
+    content: '−';
 }
 
-.parent-priority-card {
-    border-color: rgba(245, 158, 11, 0.2);
+.simple-disclosure > summary span,
+.simple-disclosure > summary small {
+    display: block;
 }
 
-.admin-priority-card,
-.teacher-priority-card {
-    border-color: rgba(99, 102, 241, 0.18);
+.simple-disclosure > summary small {
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.simple-disclosure > div {
+    padding: 0 18px 18px;
+}
+
+.simple-disclosure .student-achievements-panel,
+.simple-disclosure .learning-progress-panel,
+.simple-disclosure .catalog-dashboard-section,
+.simple-disclosure .projects-section,
+.simple-disclosure .parent-course-list {
+    margin-bottom: 0;
 }
 
 .learning-progress-panel,
@@ -3817,7 +3815,6 @@ input:focus, select:focus, textarea:focus {
     .landing-audience-grid,
     .landing-flow-grid,
     .home-ads-grid,
-    .role-priority-card,
     .ai-review-item,
     .landing-safety-card,
     .parent-dashboard-layout,
@@ -3955,7 +3952,6 @@ input:focus, select:focus, textarea:focus {
     .dashboard-hero-card,
     .landing-safety-card,
     .home-ads-section,
-    .role-priority-card,
     .parent-hero-card,
     .parent-student-header,
     .parent-course-card,
