@@ -344,70 +344,32 @@ export default function Dashboard() {
 
                     {message && <div className="error-box">{message}</div>}
 
-                    <div className="student-home-grid">
-                        <article className="student-insight-card featured">
-                            <span className="insight-icon" aria-hidden="true">
-                                {profile.ageGroup === '5-8' ? '🎈' : '🎯'}
-                            </span>
+                    {pendingReviews.length > 0 && (
+                        <div className="student-simple-alert">
+                            <span aria-hidden="true">⏳</span>
                             <div>
-                                <span className="eyebrow">اليوم</span>
-                                <h3>{ageProfile.taskTitle}</h3>
-                                <p>
-                                    {activeNextLesson
-                                        ? ageProfile.taskText
-                                        : 'اختر دورة من الكتالوج، وبعد التسجيل ستظهر لك مهمة اليوم هنا.'}
-                                </p>
+                                <strong>عملك وصل للمعلم</strong>
+                                <p>لديك {pendingReviews.length} درس بانتظار المراجعة. لا تحتاج أن تفعل شيئًا الآن.</p>
                             </div>
-                        </article>
+                        </div>
+                    )}
 
-                        <article className="student-insight-card">
-                            <span className="insight-icon pending-icon" aria-hidden="true">⏳</span>
-                            <div>
-                                <span className="eyebrow">مراجعة المعلم</span>
-                                <h3>{pendingReviews.length ? `${pendingReviews.length} بانتظار الاعتماد` : 'لا توجد دروس معلّقة'}</h3>
-                                {pendingReviews.length ? (
-                                    <ul className="pending-review-list">
-                                        {pendingReviews.slice(0, 2).map((item) => (
-                                            <li key={`${item.course._id}-${item.lesson?._id || item.lesson?.title}`}>
-                                                <strong>{item.lesson?.title || 'درس بانتظار المراجعة'}</strong>
-                                                <span>
-                                                    {item.course.title}
-                                                    {item.submittedAt ? ` · ${formatArabicDate(item.submittedAt)}` : ''}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : (
-                                    <p>عندما ترسل درسًا للمراجعة سيظهر هنا حتى يعتمد المعلم النتيجة.</p>
-                                )}
-                            </div>
-                        </article>
-
-                        <article className="student-insight-card age-note-card">
-                            <span className="insight-icon" aria-hidden="true">🧭</span>
-                            <div>
-                                <span className="eyebrow">مناسب للعمر</span>
-                                <h3>{recommendedCourse ? recommendedCourse.title : 'اختر الفئة العمرية'}</h3>
-                                <p>{ageProfile.mentorNote}</p>
-                            </div>
-                        </article>
-                    </div>
-
-                    <div className="dashboard-stat-grid">
-                        {progressSummary.map((item) => (
-                            <div className="dashboard-stat-card" key={item.label}>
-                                <span aria-hidden="true">{item.icon}</span>
-                                <strong>{item.value}</strong>
-                                <p>{item.label}</p>
-                            </div>
-                        ))}
-                    </div>
-
-                    <details id="student-achievements" className="simple-disclosure">
+                    <details className="simple-disclosure student-more-disclosure">
                         <summary>
-                            <span>🏅 الإنجازات والشارات</span>
-                            <small>{unlockedAchievements} من {achievements.length} مفتوحة</small>
+                            <span>المزيد عن تقدمي</span>
+                            <small>الشارات · الشهادة · الدورات · المشاريع</small>
                         </summary>
+
+                        <div className="dashboard-stat-grid">
+                            {progressSummary.map((item) => (
+                                <div className="dashboard-stat-card" key={item.label}>
+                                    <span aria-hidden="true">{item.icon}</span>
+                                    <strong>{item.value}</strong>
+                                    <p>{item.label}</p>
+                                </div>
+                            ))}
+                        </div>
+
                         <div className="student-achievements-panel">
                             <div className="section-heading compact-heading">
                                 <div>
@@ -433,15 +395,9 @@ export default function Dashboard() {
                                 ))}
                             </div>
                         </div>
-                    </details>
 
-                    {/* Progress Visualizer */}
-                    {courses.length > 0 && (
-                        <details className="simple-disclosure">
-                            <summary>
-                                <span>📈 تفاصيل التقدم والشهادة</span>
-                                <small>{enrolledCourses.length ? `${completedLessons}/${totalLessons || 0} درس مكتمل` : 'لم تبدأ بعد'}</small>
-                            </summary>
+                        {/* Progress Visualizer */}
+                        {courses.length > 0 && (
                             <div className="learning-progress-panel">
                                 <div className="section-heading compact-heading">
                                     <div>
@@ -530,14 +486,8 @@ export default function Dashboard() {
                                     );
                                 })}
                             </div>
-                        </details>
-                    )}
+                        )}
 
-                    <details id="student-courses" className="simple-disclosure" open={enrolledCourses.length === 0}>
-                        <summary>
-                            <span>📚 الدورات المتاحة</span>
-                            <small>{sortedCourses.length} دورة</small>
-                        </summary>
                         <div className="catalog-dashboard-section">
                             <div className="section-heading compact-heading">
                                 <div>
@@ -557,13 +507,7 @@ export default function Dashboard() {
                                 ))}
                             </div>
                         </div>
-                    </details>
 
-                    <details className="simple-disclosure">
-                        <summary>
-                            <span>🛠️ المشاريع البرمجية</span>
-                            <small>{submissions.length} مشروع</small>
-                        </summary>
                         <div className="projects-section">
                             <div className="section-heading compact-heading">
                                 <div>

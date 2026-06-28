@@ -104,48 +104,55 @@ export default function CoursePage() {
                             </div>
                         </div>
 
-                        <div className="lesson-map-heading">
-                            <div><span className="eyebrow">خريطة الدورة</span><h2>الدروس بالترتيب</h2></div>
-                            <p>إكمال كل درس وموافقة المعلم يفتحان الدرس التالي تلقائياً.</p>
-                        </div>
+                        <details className="simple-disclosure course-map-disclosure" open={!progress.enrolled}>
+                            <summary>
+                                <span>كل دروس الدورة</span>
+                                <small>{course.lessonCount} درس · الدرس التالي يظهر بالأعلى</small>
+                            </summary>
 
-                        <div className="lesson-state-legend" aria-label="ملخص حالات الدروس">
-                            <span><b className="legend-dot available" /> متاح: {lessonCounts.available || 0}</span>
-                            <span><b className="legend-dot in-progress" /> قيد التعلم: {lessonCounts.in_progress || 0}</span>
-                            <span><b className="legend-dot pending" /> بانتظار المعلم: {lessonCounts.awaiting_approval || 0}</span>
-                            <span><b className="legend-dot complete" /> مكتمل: {lessonCounts.completed || 0}</span>
-                            <span><b className="legend-dot locked" /> مقفل: {lessonCounts.locked || 0}</span>
-                        </div>
+                            <div className="lesson-map-heading">
+                                <div><span className="eyebrow">خريطة الدورة</span><h2>الدروس بالترتيب</h2></div>
+                                <p>لا تحتاج حفظ الخريطة. عبقورا يفتح لك الدرس المناسب تلقائيًا.</p>
+                            </div>
 
-                        <div className="lesson-sequence">
-                            {course.lessons.map((lesson) => {
-                                const state = lesson.studentState || 'available';
-                                const [label, icon] = stateLabels[state] || stateLabels.available;
-                                const locked = state === 'locked';
-                                const unavailablePlaceholder = lesson.isPlaceholder && !locked;
-                                return (
-                                    <article key={lesson.stableId || lesson._id} className={`lesson-row state-${state} ${lesson.isPlaceholder ? 'is-placeholder' : ''}`}>
-                                        <div className="lesson-order">{lesson.order}</div>
-                                        <div className="lesson-row-content">
-                                            <div className="lesson-row-title">
-                                                <h3>{lesson.title}</h3>
-                                                {lesson.isPlaceholder && <span className="placeholder-badge">قيد التأليف داخل عبقورة</span>}
+                            <div className="lesson-state-legend" aria-label="ملخص حالات الدروس">
+                                <span><b className="legend-dot available" /> متاح: {lessonCounts.available || 0}</span>
+                                <span><b className="legend-dot in-progress" /> قيد التعلم: {lessonCounts.in_progress || 0}</span>
+                                <span><b className="legend-dot pending" /> بانتظار المعلم: {lessonCounts.awaiting_approval || 0}</span>
+                                <span><b className="legend-dot complete" /> مكتمل: {lessonCounts.completed || 0}</span>
+                                <span><b className="legend-dot locked" /> مقفل: {lessonCounts.locked || 0}</span>
+                            </div>
+
+                            <div className="lesson-sequence">
+                                {course.lessons.map((lesson) => {
+                                    const state = lesson.studentState || 'available';
+                                    const [label, icon] = stateLabels[state] || stateLabels.available;
+                                    const locked = state === 'locked';
+                                    const unavailablePlaceholder = lesson.isPlaceholder && !locked;
+                                    return (
+                                        <article key={lesson.stableId || lesson._id} className={`lesson-row state-${state} ${lesson.isPlaceholder ? 'is-placeholder' : ''}`}>
+                                            <div className="lesson-order">{lesson.order}</div>
+                                            <div className="lesson-row-content">
+                                                <div className="lesson-row-title">
+                                                    <h3>{lesson.title}</h3>
+                                                    {lesson.isPlaceholder && <span className="placeholder-badge">قيد التأليف داخل عبقورة</span>}
+                                                </div>
+                                                <div className="lesson-row-meta">
+                                                    <span>{typeLabels[lesson.type] || 'درس'}</span>
+                                                    <span className={`lesson-state-badge state-${state}`}>{icon} {label}</span>
+                                                    {unavailablePlaceholder && <span className="lesson-note">لا يوجد نشاط داخلي بعد</span>}
+                                                </div>
                                             </div>
-                                            <div className="lesson-row-meta">
-                                                <span>{typeLabels[lesson.type] || 'درس'}</span>
-                                                <span className={`lesson-state-badge state-${state}`}>{icon} {label}</span>
-                                                {unavailablePlaceholder && <span className="lesson-note">لا يوجد نشاط داخلي بعد</span>}
-                                            </div>
-                                        </div>
-                                        {locked ? (
-                                            <button className="lesson-open-button locked" disabled aria-label="الدرس مقفل">🔒</button>
-                                        ) : (
-                                            <Link href={{ pathname: '/lesson', query: { id: lesson._id } }} className="lesson-open-button" aria-label={`فتح ${lesson.title}`}>←</Link>
-                                        )}
-                                    </article>
-                                );
-                            })}
-                        </div>
+                                            {locked ? (
+                                                <button className="lesson-open-button locked" disabled aria-label="الدرس مقفل">🔒</button>
+                                            ) : (
+                                                <Link href={{ pathname: '/lesson', query: { id: lesson._id } }} className="lesson-open-button" aria-label={`فتح ${lesson.title}`}>←</Link>
+                                            )}
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                        </details>
                     </>
                 ) : !message && <p className="loading-copy">جاري التحميل...</p>}
             </section>
