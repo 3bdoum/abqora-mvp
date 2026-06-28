@@ -386,6 +386,70 @@ test('AI tutor answers available lessons and stores the exchange', async () => {
     }
 });
 
+test('teacher AI tutor review is limited to assigned students', async () => {
+    const data = await setupScenario();
+    await AiTutorExchange.create({
+        student: data.student._id,
+        course: data.course._id,
+        lesson: data.lessons[0]._id,
+        lessonState: 'available',
+        userMessage: 'ما المطلوب في الدرس؟',
+        assistantMessage: 'شاهد الفيديو ثم جرّب خطوة واحدة.',
+        status: 'answered',
+    });
+
+    const assignedView = await request(app)
+        .get('/api/teacher/ai-tutor')
+        .set(auth(data.tokens.teacher));
+    assert.equal(assignedView.status, 200);
+    assert.equal(assignedView.body.summary.total, 1);
+    assert.equal(assignedView.body.exchanges[0].student.email, data.student.email);
+
+    const otherTeacherView = await request(app)
+        .get('/api/teacher/ai-tutor')
+        .set(auth(data.tokens.otherTeacher));
+    assert.equal(otherTeacherView.status, 200);
+    assert.equal(otherTeacherView.body.summary.total, 0);
+
+    const directUnassignedAttempt = await request(app)
+        .get(`/api/teacher/ai-tutor?studentId=${data.student._id}`)
+        .set(auth(data.tokens.otherTeacher));
+    assert.equal(directUnassignedAttempt.status, 403);
+});
+
+test('admin AI tutor review can inspect all students', async () => {
+    const data = await setupScenario();
+    const secondStudent = await makeUser('second-student@test.local', 'student');
+    await AiTutorExchange.create([
+        {
+            student: data.student._id,
+            course: data.course._id,
+            lesson: data.lessons[0]._id,
+            lessonState: 'available',
+            userMessage: 'أريد تلميحًا',
+            assistantMessage: 'ابدأ بالسؤال: ما الخطوة الأولى؟',
+            status: 'answered',
+        },
+        {
+            student: secondStudent._id,
+            course: data.course._id,
+            lesson: data.lessons[0]._id,
+            lessonState: 'available',
+            userMessage: 'اكتب الحل كامل',
+            assistantMessage: 'أعطي تلميحات فقط، لا الحل الكامل.',
+            status: 'blocked',
+        },
+    ]);
+
+    const response = await request(app)
+        .get('/api/teacher/ai-tutor')
+        .set(auth(data.tokens.admin));
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.summary.total, 2);
+    assert.equal(response.body.summary.blocked, 1);
+});
+
 test('legacy completed lesson progress is preserved and backfilled', async () => {
     const data = await setupScenario();
     const progress = await Progress.findOne({ user: data.student._id, course: data.course._id });

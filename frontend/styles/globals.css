@@ -1484,6 +1484,72 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.78rem;
 }
 
+.role-priority-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(230px, 0.34fr);
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 20px;
+    border: 1px solid rgba(79, 70, 229, 0.14);
+    border-radius: 24px;
+    background:
+        radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.1), transparent 30%),
+        rgba(255,255,255,0.9);
+    box-shadow: var(--shadow-sm);
+}
+
+.role-priority-card h2 {
+    margin: 4px 0 6px;
+}
+
+.role-priority-card p {
+    max-width: 760px;
+    font-size: 0.9rem;
+}
+
+.priority-action-list {
+    display: grid;
+    gap: 8px;
+}
+
+.priority-action-list a,
+.priority-action-list button {
+    width: 100%;
+    border: 1px solid rgba(79, 70, 229, 0.15);
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.84);
+    color: var(--primary);
+    font-family: inherit;
+    font-size: 0.86rem;
+    font-weight: 900;
+    text-align: right;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.priority-action-list a:hover,
+.priority-action-list button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(79, 70, 229, 0.32);
+    background: var(--primary-light);
+}
+
+.student-priority-card {
+    border-color: rgba(16, 185, 129, 0.18);
+}
+
+.parent-priority-card {
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.admin-priority-card,
+.teacher-priority-card {
+    border-color: rgba(99, 102, 241, 0.18);
+}
+
 .learning-progress-panel,
 .catalog-dashboard-section,
 .projects-section {
@@ -2041,6 +2107,52 @@ input:focus, select:focus, textarea:focus {
     font-weight: 800;
 }
 
+.home-ads-section {
+    margin: 28px 0 34px;
+    padding: 20px;
+    border: 1px solid rgba(245, 158, 11, 0.18);
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 8% 12%, rgba(251, 191, 36, 0.16), transparent 32%),
+        linear-gradient(135deg, rgba(255,251,235,0.82), rgba(255,255,255,0.92));
+    box-shadow: var(--shadow-sm);
+}
+
+.home-ads-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.home-ad-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 16px;
+    border: 1px solid rgba(245, 158, 11, 0.16);
+    border-radius: 22px;
+    background: rgba(255,255,255,0.88);
+}
+
+.home-ad-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 17px;
+    background: #fef3c7;
+    font-size: 1.35rem;
+}
+
+.home-ad-card h3 {
+    margin: 8px 0 4px;
+}
+
+.home-ad-card p {
+    font-size: 0.86rem;
+}
+
 .landing-audience-grid,
 .landing-flow-grid {
     display: grid;
@@ -2564,6 +2676,156 @@ input:focus, select:focus, textarea:focus {
 
 .teacher-stat-grid {
     margin-bottom: 24px;
+}
+
+.ai-review-panel {
+    margin-bottom: 24px;
+    border-radius: 24px;
+    border-color: rgba(79, 70, 229, 0.16);
+    background:
+        radial-gradient(circle at 8% 16%, rgba(6, 182, 212, 0.1), transparent 30%),
+        rgba(255,255,255,0.92);
+}
+
+.ai-review-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: flex-start;
+}
+
+.ai-review-header p {
+    max-width: 780px;
+    font-size: 0.9rem;
+}
+
+.ai-review-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 18px 0;
+}
+
+.ai-review-summary div {
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: rgba(255,255,255,0.76);
+}
+
+.ai-review-summary strong,
+.ai-review-summary span {
+    display: block;
+}
+
+.ai-review-summary strong {
+    color: var(--primary);
+    font-size: 1.45rem;
+}
+
+.ai-review-summary span {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.ai-review-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.ai-review-filters button {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 12px;
+    background: white;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.ai-review-filters button.active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.ai-attention-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 14px;
+    padding: 12px;
+    border: 1px solid rgba(245, 158, 11, 0.22);
+    border-radius: 16px;
+    background: #fffbeb;
+}
+
+.ai-attention-strip span {
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.82);
+    color: #92400e;
+    font-size: 0.76rem;
+    font-weight: 900;
+}
+
+.ai-review-list {
+    display: grid;
+    gap: 12px;
+}
+
+.ai-review-item {
+    display: grid;
+    grid-template-columns: minmax(170px, 0.24fr) minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: start;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: rgba(255,255,255,0.86);
+}
+
+.ai-review-item.status-blocked {
+    border-color: rgba(245, 158, 11, 0.32);
+    background: rgba(255, 251, 235, 0.76);
+}
+
+.ai-review-item.status-error {
+    border-color: rgba(239, 68, 68, 0.22);
+    background: rgba(254, 226, 226, 0.46);
+}
+
+.ai-review-meta strong,
+.ai-review-meta span,
+.ai-review-meta small {
+    display: block;
+}
+
+.ai-review-meta span,
+.ai-review-meta small {
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    margin-top: 3px;
+}
+
+.ai-review-chat p {
+    margin-bottom: 7px;
+    font-size: 0.86rem;
+}
+
+.ai-status-tag.status-blocked {
+    background: var(--warning-light);
+    color: #a16207;
+}
+
+.ai-status-tag.status-error {
+    background: #fee2e2;
+    color: var(--danger);
 }
 
 .teacher-sidebar {
@@ -3453,6 +3715,9 @@ input:focus, select:focus, textarea:focus {
     .landing-hero,
     .landing-audience-grid,
     .landing-flow-grid,
+    .home-ads-grid,
+    .role-priority-card,
+    .ai-review-item,
     .landing-safety-card,
     .parent-dashboard-layout,
     .parent-hero-card,
@@ -3467,6 +3732,7 @@ input:focus, select:focus, textarea:focus {
 
     .dashboard-stat-grid,
     .teacher-stat-grid,
+    .ai-review-summary,
     .achievement-grid,
     .readiness-stat-grid {
         grid-template-columns: 1fr;
@@ -3523,6 +3789,19 @@ input:focus, select:focus, textarea:focus {
     .teacher-filter-buttons {
         justify-content: flex-start;
     }
+
+    .home-ad-card {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .home-ad-card .small-button {
+        grid-column: 1 / -1;
+        justify-content: center;
+    }
+
+    .ai-review-header {
+        flex-direction: column;
+    }
 }
 
 @media (max-width: 640px) {
@@ -3563,6 +3842,8 @@ input:focus, select:focus, textarea:focus {
 
     .dashboard-hero-card,
     .landing-safety-card,
+    .home-ads-section,
+    .role-priority-card,
     .parent-hero-card,
     .parent-student-header,
     .parent-course-card,
@@ -3669,6 +3950,7 @@ input:focus, select:focus, textarea:focus {
 
     .parent-course-header,
     .parent-next-action-card,
+    .ai-review-header,
     .parent-certificate-strip {
         align-items: stretch;
         grid-template-columns: 1fr;

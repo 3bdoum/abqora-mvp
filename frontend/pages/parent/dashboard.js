@@ -225,8 +225,21 @@ export default function ParentDashboard() {
 
                 {message && <div className="error-box">{message}</div>}
 
+                <div className="role-priority-card parent-priority-card">
+                    <div>
+                        <span className="eyebrow">متابعة بدون زحمة</span>
+                        <h2>ما يهم ولي الأمر اليوم</h2>
+                        <p>ابدأ باختيار الطفل، ثم اقرأ بطاقة “ماذا أفعل اليوم؟”. باقي التفاصيل موجودة عند الحاجة فقط.</p>
+                    </div>
+                    <div className="priority-action-list">
+                        <a href="#parent-children">1. اختر الطفل</a>
+                        <a href="#parent-next-action">2. نصيحة اليوم</a>
+                        <a href="#parent-course-progress">3. تقدم الدورات</a>
+                    </div>
+                </div>
+
                 <div className="parent-dashboard-layout">
-                    <aside className="parent-sidebar">
+                    <aside id="parent-children" className="parent-sidebar">
                         <div className="card parent-link-card">
                             <h3>ربط حساب ابن جديد 🔗</h3>
                             {linkMessage && <div className="success-box compact-alert">{linkMessage}</div>}
@@ -312,7 +325,7 @@ export default function ParentDashboard() {
                                     </div>
                                 </div>
 
-                                <div className="parent-next-action-card">
+                                <div id="parent-next-action" className="parent-next-action-card">
                                     <div>
                                         <span className="eyebrow">ماذا أفعل اليوم؟</span>
                                         <h3>
@@ -340,7 +353,7 @@ export default function ParentDashboard() {
                                         <strong>جاري تحميل تقدم الطالب...</strong>
                                     </div>
                                 ) : (
-                                    <div className="parent-course-list">
+                                    <div id="parent-course-progress" className="parent-course-list">
                                         {courseSnapshots.map((snapshot) => (
                                             <article key={snapshot.course._id} className="parent-course-card">
                                                 <div className="parent-course-header">

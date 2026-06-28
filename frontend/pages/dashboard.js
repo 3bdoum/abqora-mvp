@@ -344,6 +344,26 @@ export default function Dashboard() {
 
                     {message && <div className="error-box">{message}</div>}
 
+                    <div className="role-priority-card student-priority-card">
+                        <div>
+                            <span className="eyebrow">نرتب الصفحة لك</span>
+                            <h2>ابدأ من هنا ولا تنشغل بكل التفاصيل</h2>
+                            <p>أهم شيء اليوم هو درس واحد فقط. الإنجازات والدورات والمشاريع موجودة بالأسفل عندما تحتاجها.</p>
+                        </div>
+                        <div className="priority-action-list">
+                            {activeCourse && (
+                                <button
+                                    type="button"
+                                    onClick={() => router.push({ pathname: '/course', query: { id: activeCourse._id } })}
+                                >
+                                    1. افتح الدرس التالي
+                                </button>
+                            )}
+                            <a href="#student-achievements">2. شوف إنجازاتك</a>
+                            <a href="#student-courses">3. الدورات والمشاريع</a>
+                        </div>
+                    </div>
+
                     <div className="student-home-grid">
                         <article className="student-insight-card featured">
                             <span className="insight-icon" aria-hidden="true">
@@ -403,7 +423,7 @@ export default function Dashboard() {
                         ))}
                     </div>
 
-                    <div className="student-achievements-panel">
+                    <div id="student-achievements" className="student-achievements-panel">
                         <div className="section-heading compact-heading">
                             <div>
                                 <span className="eyebrow">الإنجازات</span>
@@ -521,7 +541,7 @@ export default function Dashboard() {
                         </div>
                     )}
 
-                    <div className="catalog-dashboard-section">
+                    <div id="student-courses" className="catalog-dashboard-section">
                         <div className="section-heading compact-heading">
                             <div>
                                 <span className="eyebrow">دليل الدورات</span>

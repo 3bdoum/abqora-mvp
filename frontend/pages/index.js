@@ -3,6 +3,25 @@ import Link from 'next/link';
 import CourseCard from '../components/CourseCard';
 import API from '../utils/api';
 
+const homeAds = [
+    {
+        badge: 'عرض تعليمي',
+        title: 'جلسة تعريفية مجانية للأهل',
+        description: 'اكتشف كيف يتعلم الطفل داخل عبقورا: فيديو شرح، تطبيق عملي، ومراجعة من المعلم.',
+        action: 'احجز اهتمامك',
+        href: '/register',
+        icon: '🎁',
+    },
+    {
+        badge: 'مساحة إعلان',
+        title: 'مكان مخصص لشريك تعليمي',
+        description: 'يمكن استخدام هذه المساحة لاحقًا لعروض المدارس، المعسكرات، أو شركاء المحتوى المناسبين للأطفال.',
+        action: 'تواصل معنا',
+        href: '/login',
+        icon: '📣',
+    },
+];
+
 export default function Home() {
     const [courses, setCourses] = useState([]);
     const [catalogError, setCatalogError] = useState('');
@@ -41,6 +60,32 @@ export default function Home() {
                         <strong>3</strong>
                         <span>أدوار متابعة</span>
                     </div>
+                </div>
+            </section>
+
+            <section className="home-ads-section" aria-labelledby="home-ads-title">
+                <div className="section-heading compact-heading">
+                    <div>
+                        <span className="eyebrow">إعلانات وعروض</span>
+                        <h2 id="home-ads-title">مساحة مخصصة للعروض المهمة</h2>
+                    </div>
+                    <p>نستخدمها للعروض المناسبة للأهل والطلاب بدون إزعاج تجربة التعلم.</p>
+                </div>
+
+                <div className="home-ads-grid">
+                    {homeAds.map((ad) => (
+                        <article className="home-ad-card" key={ad.title}>
+                            <span className="home-ad-icon" aria-hidden="true">{ad.icon}</span>
+                            <div>
+                                <span className="tag soft-tag">{ad.badge}</span>
+                                <h3>{ad.title}</h3>
+                                <p>{ad.description}</p>
+                            </div>
+                            <Link href={ad.href} className="small-button secondary">
+                                {ad.action}
+                            </Link>
+                        </article>
+                    ))}
                 </div>
             </section>
 

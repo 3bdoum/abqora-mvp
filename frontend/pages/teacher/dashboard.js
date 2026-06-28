@@ -28,6 +28,13 @@ const lessonFilterLabels = {
     needs_content: 'تنبيه محتوى',
 };
 
+const aiTutorStatusLabels = {
+    all: 'كل المحادثات',
+    answered: 'إجابات عادية',
+    blocked: 'تنبيهات أمان',
+    error: 'أخطاء تشغيل',
+};
+
 const feedbackTemplates = [
     'أحسنت، يمكنك الانتقال إلى الدرس التالي.',
     'راجع فيديو الشرح مرة أخرى ثم أعد المحاولة.',
@@ -60,6 +67,10 @@ export default function TeacherDashboard() {
     const [busy, setBusy] = useState('');
     const [studentSearch, setStudentSearch] = useState('');
     const [lessonFilter, setLessonFilter] = useState('all');
+    const [aiTutor, setAiTutor] = useState({ summary: { total: 0, answered: 0, blocked: 0, error: 0, studentsNeedingAttention: [] }, exchanges: [] });
+    const [aiTutorLoading, setAiTutorLoading] = useState(false);
+    const [aiTutorStatus, setAiTutorStatus] = useState('all');
+    const [aiTutorOpen, setAiTutorOpen] = useState(true);
 
     useEffect(() => {
         const role = localStorage.getItem('userRole');
@@ -72,9 +83,27 @@ export default function TeacherDashboard() {
         try {
             const { data } = await API.get('/teacher/students');
             setStudents(data);
+            await loadAiTutorInsights({});
             if (data[0]) await selectStudent(data[0]);
         } catch (err) {
             setError(err.response?.data?.message || 'تعذر تحميل الطلاب');
+        }
+    };
+
+    const loadAiTutorInsights = async ({ studentId = '', courseId = '', status = aiTutorStatus } = {}) => {
+        setAiTutorLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (studentId) params.set('studentId', studentId);
+            if (courseId) params.set('courseId', courseId);
+            if (status && status !== 'all') params.set('status', status);
+            params.set('limit', '30');
+            const { data } = await API.get(`/teacher/ai-tutor?${params.toString()}`);
+            setAiTutor(data);
+        } catch (err) {
+            setError(err.response?.data?.message || 'تعذر تحميل مراجعة المساعد الذكي');
+        } finally {
+            setAiTutorLoading(false);
         }
     };
 
@@ -89,6 +118,7 @@ export default function TeacherDashboard() {
             const firstCourse = data.courses[0];
             setSelectedCourseId(firstCourse?._id || '');
             if (firstCourse) await loadCourse(student._id, firstCourse._id);
+            await loadAiTutorInsights({ studentId: student._id, status: aiTutorStatus });
         } catch (err) {
             setError(err.response?.data?.message || 'تعذر تحميل تسجيلات الطالب');
         }
@@ -105,9 +135,19 @@ export default function TeacherDashboard() {
         setLessonFilter('all');
         try {
             await loadCourse(selectedStudent._id, courseId);
+            await loadAiTutorInsights({ studentId: selectedStudent._id, courseId, status: aiTutorStatus });
         } catch (err) {
             setError(err.response?.data?.message || 'تعذر تحميل تقدم الدورة');
         }
+    };
+
+    const changeAiTutorStatus = async (status) => {
+        setAiTutorStatus(status);
+        await loadAiTutorInsights({
+            studentId: selectedStudent?._id || '',
+            courseId: selectedCourseId || '',
+            status,
+        });
     };
 
     const applyTemplate = (lessonId, template) => {
@@ -189,7 +229,98 @@ export default function TeacherDashboard() {
                     ))}
                 </div>
 
-                <div className="teacher-layout">
+                <div className="role-priority-card teacher-priority-card">
+                    <div>
+                        <span className="eyebrow">تنظيم سريع</span>
+                        <h2>ابدأ من المهمة الأهم ثم انتقل للتفاصيل</h2>
+                        <p>رتبنا الصفحة إلى 3 مناطق: مراجعة المساعد الذكي، اختيار الطالب، ثم إدارة الدروس.</p>
+                    </div>
+                    <div className="priority-action-list">
+                        <a href="#ai-tutor-review">1. أسئلة المساعد</a>
+                        <a href="#teacher-students">2. الطلاب</a>
+                        <a href="#teacher-lessons">3. الدروس والموافقات</a>
+                    </div>
+                </div>
+
+                <section id="ai-tutor-review" className="card ai-review-panel">
+                    <div className="ai-review-header">
+                        <div>
+                            <span className="eyebrow">مراجعة المساعد الذكي</span>
+                            <h2>ماذا يسأل الطلاب داخل الدروس؟</h2>
+                            <p>استخدم هذا الجزء لاكتشاف الدروس المربكة، طلبات الحل الكامل، أو الطلاب الذين يحتاجون متابعة بشرية.</p>
+                        </div>
+                        <button type="button" className="button btn-secondary" onClick={() => setAiTutorOpen((open) => !open)}>
+                            {aiTutorOpen ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}
+                        </button>
+                    </div>
+
+                    <div className="ai-review-summary">
+                        <div><strong>{aiTutor.summary?.total || 0}</strong><span>محادثات</span></div>
+                        <div><strong>{aiTutor.summary?.blocked || 0}</strong><span>تنبيهات أمان</span></div>
+                        <div><strong>{aiTutor.summary?.error || 0}</strong><span>أخطاء تشغيل</span></div>
+                    </div>
+
+                    {aiTutorOpen && (
+                        <>
+                            <div className="ai-review-filters">
+                                {Object.entries(aiTutorStatusLabels).map(([key, label]) => (
+                                    <button
+                                        type="button"
+                                        key={key}
+                                        className={aiTutorStatus === key ? 'active' : ''}
+                                        onClick={() => changeAiTutorStatus(key)}
+                                        disabled={aiTutorLoading}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {aiTutor.summary?.studentsNeedingAttention?.length > 0 && (
+                                <div className="ai-attention-strip">
+                                    <strong>طلاب يحتاجون نظرة سريعة:</strong>
+                                    {aiTutor.summary.studentsNeedingAttention.map((item) => (
+                                        <span key={item.student?._id || item.student?.email}>
+                                            {item.student?.name || 'طالب'} · {item.total} سؤال
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
+                            {aiTutorLoading ? (
+                                <div className="empty-state-card"><strong>جاري تحميل أسئلة المساعد...</strong></div>
+                            ) : aiTutor.exchanges?.length ? (
+                                <div className="ai-review-list">
+                                    {aiTutor.exchanges.slice(0, 8).map((exchange) => (
+                                        <article key={exchange._id} className={`ai-review-item status-${exchange.status}`}>
+                                            <div className="ai-review-meta">
+                                                <strong>{exchange.student?.name || 'طالب'}</strong>
+                                                <span>
+                                                    {exchange.course?.title || 'دورة'} · درس {exchange.lesson?.order || '؟'}
+                                                </span>
+                                                <small>{new Date(exchange.createdAt).toLocaleString('ar-EG')}</small>
+                                            </div>
+                                            <div className="ai-review-chat">
+                                                <p><b>سؤال الطالب:</b> {exchange.userMessage}</p>
+                                                <p><b>رد المساعد:</b> {exchange.assistantMessage || 'لم يتم إنشاء رد.'}</p>
+                                            </div>
+                                            <span className={`tag ai-status-tag status-${exchange.status}`}>
+                                                {aiTutorStatusLabels[exchange.status] || exchange.status}
+                                            </span>
+                                        </article>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="empty-state-card">
+                                    <strong>لا توجد محادثات مطابقة الآن.</strong>
+                                    <p>عندما يستخدم الطالب مساعد عبقورا داخل الدرس ستظهر الأسئلة هنا.</p>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </section>
+
+                <div id="teacher-students" className="teacher-layout">
                     <aside className="teacher-sidebar card">
                         <div className="teacher-sidebar-heading">
                             <h2>الطلاب المعيّنون</h2>
@@ -271,7 +402,7 @@ export default function TeacherDashboard() {
                                     </div>
                                 </div>
 
-                                <div className="teacher-lessons">
+                                <div id="teacher-lessons" className="teacher-lessons">
                                     {filteredLessons.length === 0 ? (
                                         <div className="card">
                                             <p>لا توجد دروس مطابقة لهذا الفلتر.</p>

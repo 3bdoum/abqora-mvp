@@ -5,6 +5,7 @@ const Progress = require('../models/progressModel');
 const Quiz = require('../models/quizModel');
 const TeacherStudentAssignment = require('../models/teacherStudentAssignmentModel');
 const ProgressAuditLog = require('../models/progressAuditLogModel');
+const AiTutorExchange = require('../models/aiTutorExchangeModel');
 const { canManageStudent } = require('../utils/teacherAccess');
 const {
     findLessonProgress,
@@ -208,4 +209,116 @@ const updateStudentLesson = async (req, res) => {
     }
 };
 
-module.exports = { listStudents, getStudentCourses, getStudentCourse, updateStudentLesson };
+const getAllowedStudentIds = async (actor) => {
+    if (actor.role === 'admin') {
+        const students = await User.find({ role: 'student' }).select('_id');
+        return students.map((student) => student._id);
+    }
+
+    const assignments = await TeacherStudentAssignment.find({
+        teacher: actor._id,
+        active: true,
+    }).select('student');
+    return assignments.map((assignment) => assignment.student);
+};
+
+const listAiTutorExchanges = async (req, res) => {
+    try {
+        const query = {};
+        const requestedStudentId = cleanText(req.query.studentId, 80);
+        const requestedCourseId = cleanText(req.query.courseId, 80);
+        const requestedStatus = cleanText(req.query.status, 30);
+        const limit = Math.min(Math.max(Number(req.query.limit) || 40, 1), 100);
+
+        if (requestedStudentId) {
+            const student = await requireStudentAccess(req, res, requestedStudentId);
+            if (!student) return;
+            query.student = student._id;
+        } else {
+            const allowedStudentIds = await getAllowedStudentIds(req.user);
+            query.student = { $in: allowedStudentIds };
+        }
+
+        if (requestedCourseId) {
+            if (!isObjectId(requestedCourseId)) {
+                return res.status(400).json({ message: 'معرّف الدورة غير صالح' });
+            }
+            query.course = requestedCourseId;
+        }
+
+        if (requestedStatus && requestedStatus !== 'all') {
+            if (!['answered', 'blocked', 'error'].includes(requestedStatus)) {
+                return res.status(400).json({ message: 'فلتر حالة المساعد غير صالح' });
+            }
+            query.status = requestedStatus;
+        }
+
+        const exchanges = await AiTutorExchange.find(query)
+            .populate('student', 'name email ageGroup')
+            .populate('course', 'title slug')
+            .populate('lesson', 'title order stableId')
+            .sort('-createdAt')
+            .limit(limit);
+
+        const summary = exchanges.reduce((acc, exchange) => {
+            acc.total += 1;
+            acc[exchange.status] = (acc[exchange.status] || 0) + 1;
+            const studentId = String(exchange.student?._id || exchange.student || '');
+            if (studentId) {
+                acc.byStudent[studentId] = acc.byStudent[studentId] || {
+                    student: exchange.student,
+                    total: 0,
+                    blocked: 0,
+                    error: 0,
+                };
+                acc.byStudent[studentId].total += 1;
+                if (exchange.status === 'blocked') acc.byStudent[studentId].blocked += 1;
+                if (exchange.status === 'error') acc.byStudent[studentId].error += 1;
+            }
+            return acc;
+        }, {
+            total: 0,
+            answered: 0,
+            blocked: 0,
+            error: 0,
+            byStudent: {},
+        });
+
+        const studentsNeedingAttention = Object.values(summary.byStudent)
+            .filter((item) => item.blocked || item.error || item.total >= 5)
+            .sort((a, b) => (b.blocked + b.error + b.total) - (a.blocked + a.error + a.total))
+            .slice(0, 6);
+
+        return res.json({
+            summary: {
+                total: summary.total,
+                answered: summary.answered || 0,
+                blocked: summary.blocked || 0,
+                error: summary.error || 0,
+                studentsNeedingAttention,
+            },
+            exchanges: exchanges.map((exchange) => ({
+                _id: exchange._id,
+                student: exchange.student,
+                course: exchange.course,
+                lesson: exchange.lesson,
+                lessonState: exchange.lessonState,
+                userMessage: exchange.userMessage,
+                assistantMessage: exchange.assistantMessage,
+                status: exchange.status,
+                safetyFlags: exchange.safetyFlags || [],
+                createdAt: exchange.createdAt,
+            })),
+        });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = {
+    listStudents,
+    getStudentCourses,
+    getStudentCourse,
+    updateStudentLesson,
+    listAiTutorExchanges,
+};
