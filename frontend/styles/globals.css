@@ -2617,6 +2617,70 @@ input:focus, select:focus, textarea:focus {
 
 .result-dynamic-page {
     max-width: 1160px;
+    scroll-behavior: smooth;
+}
+
+.result-floating-header {
+    position: sticky;
+    top: 12px;
+    z-index: 90;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    margin: -18px 0 18px;
+    padding: 10px 12px;
+    border: 1px solid rgba(79, 70, 229, 0.14);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.78);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    animation: resultHeaderDrop 0.58s ease both;
+}
+
+.result-floating-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #fff;
+    font-weight: 950;
+    text-decoration: none;
+}
+
+.result-floating-brand::before {
+    content: '🎓';
+}
+
+.result-floating-links {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.result-floating-links a {
+    padding: 8px 10px;
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    font-weight: 900;
+    text-decoration: none;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.result-floating-links a:hover {
+    transform: translateY(-1px);
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+#result-top,
+#result-calculator,
+#result-plan {
+    scroll-margin-top: 96px;
 }
 
 .result-dynamic-hero {
@@ -2635,6 +2699,7 @@ input:focus, select:focus, textarea:focus {
         radial-gradient(circle at 88% 10%, rgba(245, 158, 11, 0.18), transparent 26%),
         linear-gradient(135deg, rgba(255,255,255,0.92), rgba(239,246,255,0.96));
     box-shadow: var(--shadow-lg);
+    animation: resultHeroRise 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .result-hero-orb {
@@ -2643,6 +2708,7 @@ input:focus, select:focus, textarea:focus {
     filter: blur(1px);
     opacity: 0.58;
     pointer-events: none;
+    animation: resultOrbFloat 8s ease-in-out infinite;
 }
 
 .result-hero-orb.one {
@@ -2659,6 +2725,46 @@ input:focus, select:focus, textarea:focus {
     left: 32px;
     bottom: -26px;
     background: rgba(6, 182, 212, 0.16);
+    animation-delay: -3s;
+}
+
+.result-floating-shape {
+    position: absolute;
+    z-index: 0;
+    display: grid;
+    place-items: center;
+    min-width: 54px;
+    height: 42px;
+    padding: 0 14px;
+    border: 1px solid rgba(255,255,255,0.66);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.62);
+    color: var(--primary);
+    font-size: 0.88rem;
+    font-weight: 950;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.09);
+    backdrop-filter: blur(10px);
+    pointer-events: none;
+    animation: resultFloatShape 6.8s ease-in-out infinite;
+}
+
+.result-floating-shape.shape-one {
+    right: 44%;
+    top: 22px;
+}
+
+.result-floating-shape.shape-two {
+    left: 18px;
+    top: 48%;
+    color: #0891b2;
+    animation-delay: -1.8s;
+}
+
+.result-floating-shape.shape-three {
+    right: 20px;
+    bottom: 20px;
+    color: #047857;
+    animation-delay: -3.4s;
 }
 
 .result-dynamic-hero > *:not(.result-hero-orb) {
@@ -2728,6 +2834,157 @@ input:focus, select:focus, textarea:focus {
     border-radius: 28px;
     background: rgba(255,255,255,0.88);
     box-shadow: var(--shadow-md);
+    animation: resultCardLiftIn 0.68s 0.12s ease both;
+    transform-style: preserve-3d;
+    transition: transform 0.24s ease, box-shadow 0.24s ease;
+}
+
+.result-live-card:hover {
+    transform: translateY(-4px) rotateX(1deg) rotateY(-1deg);
+    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.13);
+}
+
+.result-motion-stage {
+    position: relative;
+    min-height: 190px;
+    overflow: hidden;
+    border: 1px solid rgba(79, 70, 229, 0.12);
+    border-radius: 24px;
+    background:
+        radial-gradient(circle at 18% 18%, rgba(79, 70, 229, 0.18), transparent 32%),
+        radial-gradient(circle at 84% 72%, rgba(6, 182, 212, 0.18), transparent 34%),
+        linear-gradient(135deg, #f8fafc, #ffffff);
+}
+
+.result-motion-stage::before {
+    content: '';
+    position: absolute;
+    inset: -40%;
+    background: conic-gradient(from 90deg, transparent, rgba(79, 70, 229, 0.12), transparent, rgba(6, 182, 212, 0.12), transparent);
+    animation: resultSpinGlow 11s linear infinite;
+}
+
+.motion-browser {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 270px);
+    margin: 18px auto;
+    overflow: hidden;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 20px;
+    background: rgba(255,255,255,0.86);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+    animation: resultBrowserFloat 4.8s ease-in-out infinite;
+}
+
+.motion-browser-top {
+    display: flex;
+    gap: 6px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(248,250,252,0.86);
+}
+
+.motion-browser-top span {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: #cbd5e1;
+}
+
+.motion-browser-top span:nth-child(1) {
+    background: #ef4444;
+}
+
+.motion-browser-top span:nth-child(2) {
+    background: #f59e0b;
+}
+
+.motion-browser-top span:nth-child(3) {
+    background: #10b981;
+}
+
+.motion-browser-body {
+    position: relative;
+    display: grid;
+    gap: 9px;
+    padding: 14px;
+}
+
+.motion-scan-line {
+    position: absolute;
+    inset-inline: 12px;
+    top: 12px;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+    animation: resultScanLine 3.2s ease-in-out infinite;
+}
+
+.motion-step-row {
+    display: grid;
+    grid-template-columns: 28px 28px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    padding: 10px;
+    border-radius: 14px;
+    background: var(--surface-soft);
+    transform-origin: center;
+    animation: resultStepPulse 4.2s ease-in-out infinite;
+}
+
+.motion-step-row:nth-child(3) {
+    animation-delay: 0.45s;
+}
+
+.motion-step-row:nth-child(4) {
+    animation-delay: 0.9s;
+}
+
+.motion-step-row b,
+.motion-step-row span {
+    display: grid;
+    place-items: center;
+}
+
+.motion-step-row b {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.8rem;
+}
+
+.motion-step-row small {
+    color: var(--text);
+    font-weight: 900;
+}
+
+.motion-floating-badge {
+    position: absolute;
+    z-index: 2;
+    padding: 8px 11px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.86);
+    color: var(--primary);
+    font-size: 0.78rem;
+    font-weight: 950;
+    box-shadow: var(--shadow-md);
+    animation: resultBadgeFloat 5.6s ease-in-out infinite;
+}
+
+.badge-official {
+    top: 16px;
+    right: 16px;
+}
+
+.badge-private {
+    left: 16px;
+    bottom: 16px;
+    color: #047857;
+    animation-delay: -2.1s;
 }
 
 .result-live-icon {
@@ -2738,6 +2995,7 @@ input:focus, select:focus, textarea:focus {
     border-radius: 20px;
     background: var(--primary-light);
     font-size: 1.6rem;
+    animation: resultIconPop 3.8s ease-in-out infinite;
 }
 
 .result-live-card strong {
@@ -2763,6 +3021,21 @@ input:focus, select:focus, textarea:focus {
     border-radius: 20px;
     background: rgba(255,255,255,0.84);
     box-shadow: var(--shadow-sm);
+    animation: resultCardLiftIn 0.62s ease both;
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.result-quick-stats div:nth-child(2) {
+    animation-delay: 0.08s;
+}
+
+.result-quick-stats div:nth-child(3) {
+    animation-delay: 0.16s;
+}
+
+.result-quick-stats div:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
 }
 
 .result-quick-stats strong,
@@ -2793,6 +3066,18 @@ input:focus, select:focus, textarea:focus {
 .result-calculator-card.dynamic {
     border-color: rgba(79, 70, 229, 0.13);
     background: rgba(255,255,255,0.92);
+    animation: resultCardLiftIn 0.66s ease both;
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.result-calculator-card.dynamic {
+    animation-delay: 0.08s;
+}
+
+.result-checklist-card:hover,
+.result-calculator-card.dynamic:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
 }
 
 .result-card-heading {
@@ -2952,6 +3237,7 @@ input:focus, select:focus, textarea:focus {
         radial-gradient(circle at 8% 12%, rgba(245, 158, 11, 0.13), transparent 30%),
         rgba(255,255,255,0.9);
     box-shadow: var(--shadow-sm);
+    animation: resultCardLiftIn 0.66s ease both;
 }
 
 .result-action-strip h2 {
@@ -2974,12 +3260,13 @@ input:focus, select:focus, textarea:focus {
     text-align: right;
     cursor: pointer;
     box-shadow: var(--shadow-sm);
+    animation: resultCardLiftIn 0.66s ease both;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .result-help-tile:hover,
 .result-help-tile.active {
-    transform: translateY(-3px);
+    transform: translateY(-5px) scale(1.01);
     border-color: rgba(79, 70, 229, 0.28);
     box-shadow: var(--shadow-md);
 }
@@ -3009,6 +3296,151 @@ input:focus, select:focus, textarea:focus {
     color: var(--text-muted);
     font-size: 0.84rem;
     line-height: 1.7;
+}
+
+.result-scroll-cue {
+    position: absolute;
+    right: 50%;
+    bottom: 14px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transform: translateX(50%);
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.78);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-decoration: none;
+    box-shadow: var(--shadow-sm);
+    animation: resultScrollCue 2.4s ease-in-out infinite;
+}
+
+.result-scroll-cue b {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+}
+
+@keyframes resultHeaderDrop {
+    from {
+        opacity: 0;
+        transform: translateY(-14px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes resultHeroRise {
+    from {
+        opacity: 0;
+        transform: translateY(22px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes resultCardLiftIn {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes resultOrbFloat {
+    0%, 100% {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+        transform: translate3d(12px, -16px, 0) scale(1.08);
+    }
+}
+
+@keyframes resultFloatShape {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-18px) rotate(-3deg);
+    }
+}
+
+@keyframes resultSpinGlow {
+    to {
+        transform: rotate(1turn);
+    }
+}
+
+@keyframes resultBrowserFloat {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-8px) rotate(-0.8deg);
+    }
+}
+
+@keyframes resultScanLine {
+    0%, 100% {
+        top: 12px;
+        opacity: 0.25;
+    }
+    50% {
+        top: calc(100% - 18px);
+        opacity: 1;
+    }
+}
+
+@keyframes resultStepPulse {
+    0%, 100% {
+        transform: scale(1);
+        background: var(--surface-soft);
+    }
+    45%, 55% {
+        transform: scale(1.02);
+        background: #eef2ff;
+    }
+}
+
+@keyframes resultBadgeFloat {
+    0%, 100% {
+        transform: translate3d(0, 0, 0);
+    }
+    50% {
+        transform: translate3d(0, -10px, 0);
+    }
+}
+
+@keyframes resultIconPop {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.08) rotate(-3deg);
+    }
+}
+
+@keyframes resultScrollCue {
+    0%, 100% {
+        transform: translateX(50%) translateY(0);
+    }
+    50% {
+        transform: translateX(50%) translateY(7px);
+    }
 }
 
 .eyebrow {
@@ -4572,6 +5004,26 @@ input:focus, select:focus, textarea:focus {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .result-floating-header {
+        grid-template-columns: auto minmax(0, 1fr);
+        border-radius: 24px;
+    }
+
+    .result-floating-header > .small-button {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .result-floating-links {
+        justify-content: flex-end;
+        overflow-x: auto;
+        padding-bottom: 2px;
+    }
+
+    .result-motion-stage {
+        min-height: 170px;
+    }
+
     .parent-stat-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -4713,6 +5165,47 @@ input:focus, select:focus, textarea:focus {
         justify-content: center;
     }
 
+    .result-floating-header {
+        top: 8px;
+        grid-template-columns: 1fr;
+        padding: 10px;
+    }
+
+    .result-floating-brand {
+        justify-content: center;
+    }
+
+    .result-floating-links {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+        gap: 6px;
+        overflow: visible;
+    }
+
+    .result-floating-links a {
+        text-align: center;
+        font-size: 0.78rem;
+    }
+
+    .result-floating-shape,
+    .result-scroll-cue {
+        display: none;
+    }
+
+    .result-motion-stage {
+        min-height: 150px;
+    }
+
+    .motion-browser {
+        width: 100%;
+        margin: 14px auto;
+    }
+
+    .motion-floating-badge {
+        font-size: 0.72rem;
+    }
+
     .result-card-heading {
         align-items: stretch;
         flex-direction: column;
@@ -4835,4 +5328,36 @@ input:focus, select:focus, textarea:focus {
         grid-template-columns: 1fr;
     }
 
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .result-floating-header,
+    .result-dynamic-hero,
+    .result-hero-orb,
+    .result-floating-shape,
+    .result-live-card,
+    .result-motion-stage::before,
+    .motion-browser,
+    .motion-scan-line,
+    .motion-step-row,
+    .motion-floating-badge,
+    .result-live-icon,
+    .result-quick-stats div,
+    .result-checklist-card,
+    .result-calculator-card.dynamic,
+    .result-action-strip,
+    .result-help-tile,
+    .result-scroll-cue {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .result-live-card:hover,
+    .result-quick-stats div:hover,
+    .result-checklist-card:hover,
+    .result-calculator-card.dynamic:hover,
+    .result-help-tile:hover,
+    .result-help-tile.active {
+        transform: none;
+    }
 }
