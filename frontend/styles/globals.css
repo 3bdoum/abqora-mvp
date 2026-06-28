@@ -1267,6 +1267,39 @@ input:focus, select:focus, textarea:focus {
     z-index: 1;
 }
 
+.student-simple-alert {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin: 18px 0;
+    padding: 14px 16px;
+    border: 1px solid rgba(245, 158, 11, 0.24);
+    border-radius: 18px;
+    background: #fffbeb;
+    box-shadow: var(--shadow-sm);
+}
+
+.student-simple-alert > span {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 14px;
+    background: #fef3c7;
+    font-size: 1.18rem;
+}
+
+.student-simple-alert strong {
+    display: block;
+    color: #92400e;
+}
+
+.student-simple-alert p {
+    margin: 3px 0 0;
+    font-size: 0.86rem;
+}
+
 .next-card-meta {
     display: flex;
     flex-wrap: wrap;
@@ -1546,6 +1579,18 @@ input:focus, select:focus, textarea:focus {
 .simple-disclosure .projects-section,
 .simple-disclosure .parent-course-list {
     margin-bottom: 0;
+}
+
+.student-more-disclosure,
+.course-map-disclosure,
+.ai-helper-disclosure {
+    background: rgba(248,250,252,0.82);
+}
+
+.student-more-disclosure > summary,
+.course-map-disclosure > summary,
+.ai-helper-disclosure > summary {
+    background: rgba(255,255,255,0.78);
 }
 
 .learning-progress-panel,

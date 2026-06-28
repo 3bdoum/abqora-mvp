@@ -156,7 +156,6 @@ export default function LessonPage() {
     const [submittingCompletion, setSubmittingCompletion] = useState(false);
     const [completionMessage, setCompletionMessage] = useState('');
     const [completionError, setCompletionError] = useState('');
-    const [aiOpen, setAiOpen] = useState(false);
     const [aiMessages, setAiMessages] = useState([]);
     const [aiInput, setAiInput] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
@@ -345,26 +344,6 @@ export default function LessonPage() {
     const wasReviewedForRetry = lessonState === 'in_progress' && teacherFeedback && lessonProgressEntry?.reviewedAt;
     const nextLesson = getNextCourseLesson(course, lesson);
     const canPractice = Boolean(lesson?.codeOrgLink && !lesson?.isPlaceholder);
-    const journeySteps = [
-        {
-            number: 1,
-            title: 'الشرح',
-            icon: '📺',
-            state: explanationVideos.length ? 'ready' : 'needs-content',
-        },
-        {
-            number: 2,
-            title: 'التطبيق',
-            icon: '🎮',
-            state: canPractice ? 'ready' : 'needs-content',
-        },
-        {
-            number: 3,
-            title: 'المراجعة',
-            icon: lessonState === 'completed' ? '✅' : lessonState === 'awaiting_approval' ? '⏳' : '✍️',
-            state: lessonState,
-        },
-    ];
     const aiQuickPrompts = [
         'اشرح لي المطلوب ببساطة',
         'أعطني تلميحًا بدون الحل',
@@ -406,24 +385,6 @@ export default function LessonPage() {
                             </aside>
                         </div>
 
-                        <div className={`lesson-journey-strip ${ageProfile.className}`} aria-label="خطوات الدرس">
-                            {journeySteps.map((step) => (
-                                <article key={step.number} className={`lesson-journey-step state-${step.state}`}>
-                                    <span className="journey-step-number">{step.number}</span>
-                                    <div>
-                                        <strong>{step.icon} {step.title}</strong>
-                                        <small>
-                                            {step.number === 1
-                                                ? (explanationVideos.length ? 'جاهز للمشاهدة' : 'بانتظار إضافة الفيديو')
-                                                : step.number === 2
-                                                    ? (canPractice ? 'جاهز للتطبيق' : 'بانتظار رابط التطبيق')
-                                                    : statusLabel}
-                                        </small>
-                                    </div>
-                                </article>
-                            ))}
-                        </div>
-
                         {wasReviewedForRetry && (
                             <div className="teacher-feedback-card retry-feedback-card">
                                 <span aria-hidden="true">💬</span>
@@ -436,92 +397,77 @@ export default function LessonPage() {
                         )}
 
                         {userRole === 'student' && !lesson.isPlaceholder && (
-                            <div className={`card ai-tutor-card ${aiOpen ? 'is-open' : ''}`}>
-                                <div className="ai-tutor-header">
-                                    <div className="ai-tutor-title">
-                                        <span className="ai-tutor-avatar" aria-hidden="true">🤖</span>
-                                        <div>
-                                            <span className="eyebrow">مساعد ذكي داخل الدرس</span>
-                                            <h2>اسأل مساعد عبقورا قبل التطبيق</h2>
-                                            <p>يعطيك تلميحات مناسبة لعُمرك وسياق هذا الدرس، بدون إعطاء الحل الكامل.</p>
-                                        </div>
+                            <details className="simple-disclosure ai-helper-disclosure">
+                                <summary>
+                                    <span>🤖 أحتاج مساعدة</span>
+                                    <small>اسأل عن تلميح فقط، بدون الحل الكامل</small>
+                                </summary>
+
+                                <div className="ai-tutor-body">
+                                    <div className="ai-tutor-notice">
+                                        💡 استخدمه فقط إذا توقفت. شاهد الفيديو أولًا، ثم اسأل عن الخطوة التالية.
                                     </div>
-                                    <button
-                                        type="button"
-                                        className="button btn-secondary"
-                                        onClick={() => setAiOpen((open) => !open)}
-                                    >
-                                        {aiOpen ? 'إخفاء المساعد' : 'افتح المساعد'}
-                                    </button>
-                                </div>
 
-                                {aiOpen && (
-                                    <div className="ai-tutor-body">
-                                        <div className="ai-tutor-notice">
-                                            💡 استخدمه للسؤال عن الفكرة أو الخطوة التالية. المعلم فقط يستطيع اعتماد الدرس أو فتح الدروس المقفلة.
+                                    {aiUnavailable && (
+                                        <div className="error-box compact-alert">
+                                            مساعد عبقورا غير مفعّل في الخادم بعد. أضف OPENAI_API_KEY في إعدادات backend ثم أعد النشر.
                                         </div>
+                                    )}
+                                    {aiError && <div className="error-box compact-alert">{aiError}</div>}
 
-                                        {aiUnavailable && (
-                                            <div className="error-box compact-alert">
-                                                مساعد عبقورا غير مفعّل في الخادم بعد. أضف OPENAI_API_KEY في إعدادات backend ثم أعد النشر.
+                                    <div className="ai-message-list" aria-live="polite">
+                                        {aiMessages.length === 0 ? (
+                                            <div className="ai-empty-state">
+                                                <strong>ابدأ بسؤال صغير.</strong>
+                                                <p>مثلاً: “ما المطلوب في هذا التمرين؟” أو “أعطني تلميحًا”.</p>
+                                            </div>
+                                        ) : (
+                                            aiMessages.map((messageItem, index) => (
+                                                <div
+                                                    className={`ai-message ${messageItem.role} ${messageItem.status === 'blocked' ? 'blocked' : ''}`}
+                                                    key={`${messageItem.role}-${index}-${messageItem.content.slice(0, 18)}`}
+                                                >
+                                                    <span>{messageItem.role === 'user' ? 'أنت' : 'عبقورا'}</span>
+                                                    <p>{messageItem.content}</p>
+                                                </div>
+                                            ))
+                                        )}
+                                        {aiLoading && (
+                                            <div className="ai-message assistant loading">
+                                                <span>عبقورا</span>
+                                                <p>يفكر في تلميح مناسب...</p>
                                             </div>
                                         )}
-                                        {aiError && <div className="error-box compact-alert">{aiError}</div>}
-
-                                        <div className="ai-message-list" aria-live="polite">
-                                            {aiMessages.length === 0 ? (
-                                                <div className="ai-empty-state">
-                                                    <strong>ابدأ بسؤال صغير.</strong>
-                                                    <p>مثلاً: “ما المطلوب في هذا التمرين؟” أو “أعطني تلميحًا”.</p>
-                                                </div>
-                                            ) : (
-                                                aiMessages.map((messageItem, index) => (
-                                                    <div
-                                                        className={`ai-message ${messageItem.role} ${messageItem.status === 'blocked' ? 'blocked' : ''}`}
-                                                        key={`${messageItem.role}-${index}-${messageItem.content.slice(0, 18)}`}
-                                                    >
-                                                        <span>{messageItem.role === 'user' ? 'أنت' : 'عبقورا'}</span>
-                                                        <p>{messageItem.content}</p>
-                                                    </div>
-                                                ))
-                                            )}
-                                            {aiLoading && (
-                                                <div className="ai-message assistant loading">
-                                                    <span>عبقورا</span>
-                                                    <p>يفكر في تلميح مناسب...</p>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="ai-tutor-prompts" aria-label="أسئلة سريعة">
-                                            {aiQuickPrompts.map((prompt) => (
-                                                <button
-                                                    type="button"
-                                                    className="small-button"
-                                                    onClick={() => sendAiMessage(prompt)}
-                                                    disabled={aiLoading}
-                                                    key={prompt}
-                                                >
-                                                    {prompt}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        <form className="ai-tutor-form" onSubmit={handleAiSubmit}>
-                                            <textarea
-                                                value={aiInput}
-                                                onChange={(event) => setAiInput(event.target.value)}
-                                                placeholder="اكتب سؤالك عن هذا الدرس..."
-                                                rows="2"
-                                                disabled={aiLoading}
-                                            />
-                                            <button type="submit" className="button" disabled={aiLoading || !aiInput.trim()}>
-                                                {aiLoading ? 'يرد...' : 'اسأل'}
-                                            </button>
-                                        </form>
                                     </div>
-                                )}
-                            </div>
+
+                                    <div className="ai-tutor-prompts" aria-label="أسئلة سريعة">
+                                        {aiQuickPrompts.map((prompt) => (
+                                            <button
+                                                type="button"
+                                                className="small-button"
+                                                onClick={() => sendAiMessage(prompt)}
+                                                disabled={aiLoading}
+                                                key={prompt}
+                                            >
+                                                {prompt}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <form className="ai-tutor-form" onSubmit={handleAiSubmit}>
+                                        <textarea
+                                            value={aiInput}
+                                            onChange={(event) => setAiInput(event.target.value)}
+                                            placeholder="اكتب سؤالك عن هذا الدرس..."
+                                            rows="2"
+                                            disabled={aiLoading}
+                                        />
+                                        <button type="submit" className="button" disabled={aiLoading || !aiInput.trim()}>
+                                            {aiLoading ? 'يرد...' : 'اسأل'}
+                                        </button>
+                                    </form>
+                                </div>
+                            </details>
                         )}
 
                         <div className="card lesson-video-section lesson-step-card">
