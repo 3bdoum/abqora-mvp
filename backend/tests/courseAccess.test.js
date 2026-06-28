@@ -20,6 +20,7 @@ const Quiz = require('../models/quizModel');
 const Submission = require('../models/submissionModel');
 const Certificate = require('../models/certificateModel');
 const AiTutorExchange = require('../models/aiTutorExchangeModel');
+const Advertisement = require('../models/advertisementModel');
 const { backfillLegacyProgress, seedData } = require('../utils/seed');
 
 let mongo;
@@ -32,6 +33,7 @@ const clearDatabase = async () => {
         User.deleteMany({}), Course.deleteMany({}), Lesson.deleteMany({}), Progress.deleteMany({}),
         TeacherStudentAssignment.deleteMany({}), ProgressAuditLog.deleteMany({}), Quiz.deleteMany({}),
         Submission.deleteMany({}), Certificate.deleteMany({}), AiTutorExchange.deleteMany({}),
+        Advertisement.deleteMany({}),
     ]);
 };
 
@@ -448,6 +450,92 @@ test('admin AI tutor review can inspect all students', async () => {
     assert.equal(response.status, 200);
     assert.equal(response.body.summary.total, 2);
     assert.equal(response.body.summary.blocked, 1);
+});
+
+test('public home ads only returns active ads in their schedule', async () => {
+    const data = await setupScenario();
+    await Advertisement.create([
+        {
+            title: 'عرض ظاهر',
+            description: 'وصف العرض',
+            badge: 'عرض',
+            ctaHref: '/register',
+            ctaLabel: 'ابدأ',
+            active: true,
+            order: 2,
+            createdBy: data.admin._id,
+        },
+        {
+            title: 'عرض أول',
+            description: 'يظهر أولاً',
+            active: true,
+            order: 1,
+            createdBy: data.admin._id,
+        },
+        {
+            title: 'عرض متوقف',
+            description: 'لا يظهر',
+            active: false,
+            createdBy: data.admin._id,
+        },
+        {
+            title: 'عرض منتهي',
+            description: 'لا يظهر',
+            active: true,
+            startsAt: new Date('2020-01-01T00:00:00Z'),
+            endsAt: new Date('2020-01-02T00:00:00Z'),
+            createdBy: data.admin._id,
+        },
+    ]);
+
+    const response = await request(app).get('/api/ads/public/home');
+    assert.equal(response.status, 200);
+    assert.deepEqual(response.body.map((ad) => ad.title), ['عرض أول', 'عرض ظاهر']);
+});
+
+test('only admins can manage ads and unsafe links are rejected', async () => {
+    const data = await setupScenario();
+
+    const teacherAttempt = await request(app)
+        .post('/api/ads')
+        .set(auth(data.tokens.teacher))
+        .send({ title: 'إعلان', description: 'وصف الإعلان' });
+    assert.equal(teacherAttempt.status, 403);
+
+    const unsafeLink = await request(app)
+        .post('/api/ads')
+        .set(auth(data.tokens.admin))
+        .send({
+            title: 'إعلان',
+            description: 'وصف الإعلان',
+            ctaHref: 'http://unsafe.example.com',
+        });
+    assert.equal(unsafeLink.status, 400);
+
+    const created = await request(app)
+        .post('/api/ads')
+        .set(auth(data.tokens.admin))
+        .send({
+            title: 'خصم العائلة',
+            description: 'عرض مناسب لأولياء الأمور',
+            badge: 'جديد',
+            icon: '🎁',
+            ctaLabel: 'سجل الآن',
+            ctaHref: '/register',
+            audience: 'parents',
+            active: true,
+            order: 3,
+        });
+
+    assert.equal(created.status, 201);
+    assert.equal(created.body.title, 'خصم العائلة');
+    assert.equal(created.body.audience, 'parents');
+
+    const list = await request(app)
+        .get('/api/ads')
+        .set(auth(data.tokens.admin));
+    assert.equal(list.status, 200);
+    assert.equal(list.body.length, 1);
 });
 
 test('legacy completed lesson progress is preserved and backfilled', async () => {

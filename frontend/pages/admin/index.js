@@ -16,6 +16,24 @@ const emptyLessonForm = {
     codeOrgLink: '',
 };
 
+const emptyAdForm = {
+    badge: '',
+    title: '',
+    description: '',
+    icon: '📣',
+    ctaLabel: '',
+    ctaHref: '/register',
+    audience: 'all',
+    active: true,
+    order: '1',
+    startsAt: '',
+    endsAt: '',
+};
+
+const formatDateInput = (value) => (
+    value ? new Date(value).toISOString().slice(0, 10) : ''
+);
+
 const lessonHasVideos = (lesson) => Boolean(
     lesson?.videoUrls?.some((video) => video.url?.trim()) || lesson?.videoUrl?.trim()
 );
@@ -81,6 +99,10 @@ export default function AdminDashboard() {
 
     // Review submission state
     const [feedbacks, setFeedbacks] = useState({});
+    const [ads, setAds] = useState([]);
+    const [adForm, setAdForm] = useState(emptyAdForm);
+    const [editingAdId, setEditingAdId] = useState('');
+    const [savingAd, setSavingAd] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -170,8 +192,12 @@ export default function AdminDashboard() {
 
     const fetchData = async () => {
         try {
-            const subRes = await API.get('/submissions');
+            const [subRes, adsRes] = await Promise.all([
+                API.get('/submissions'),
+                API.get('/ads').catch(() => ({ data: [] })),
+            ]);
             setSubmissions(subRes.data);
+            setAds(adsRes.data || []);
 
             const coursesRes = await API.get('/courses');
             setCourses(coursesRes.data);
@@ -189,6 +215,86 @@ export default function AdminDashboard() {
             }
         } catch (err) {
             setMessage('تعذر تحميل البيانات للمشرف');
+        }
+    };
+
+    const resetAdForm = () => {
+        setAdForm(emptyAdForm);
+        setEditingAdId('');
+    };
+
+    const editAd = (ad) => {
+        setEditingAdId(ad._id);
+        setAdForm({
+            badge: ad.badge || '',
+            title: ad.title || '',
+            description: ad.description || '',
+            icon: ad.icon || '📣',
+            ctaLabel: ad.ctaLabel || '',
+            ctaHref: ad.ctaHref || '/register',
+            audience: ad.audience || 'all',
+            active: Boolean(ad.active),
+            order: String(ad.order ?? 1),
+            startsAt: formatDateInput(ad.startsAt),
+            endsAt: formatDateInput(ad.endsAt),
+        });
+        setActiveTab('ads');
+    };
+
+    const handleAdFormChange = (field, value) => {
+        setAdForm((current) => ({ ...current, [field]: value }));
+    };
+
+    const saveAd = async (event) => {
+        event.preventDefault();
+        setSavingAd(true);
+        setMessage('');
+        try {
+            const payload = {
+                ...adForm,
+                startsAt: adForm.startsAt || null,
+                endsAt: adForm.endsAt || null,
+            };
+            if (editingAdId) {
+                await API.put(`/ads/${editingAdId}`, payload);
+                setMessage('تم تحديث الإعلان بنجاح.');
+            } else {
+                await API.post('/ads', payload);
+                setMessage('تم إنشاء الإعلان بنجاح.');
+            }
+            resetAdForm();
+            const { data } = await API.get('/ads');
+            setAds(data || []);
+        } catch (err) {
+            setMessage(err.response?.data?.message || 'تعذر حفظ الإعلان');
+        } finally {
+            setSavingAd(false);
+        }
+    };
+
+    const deleteAd = async (adId) => {
+        if (!window.confirm('هل تريد حذف هذا الإعلان؟')) return;
+        try {
+            await API.delete(`/ads/${adId}`);
+            setMessage('تم حذف الإعلان.');
+            setAds((current) => current.filter((ad) => ad._id !== adId));
+            if (editingAdId === adId) resetAdForm();
+        } catch (err) {
+            setMessage(err.response?.data?.message || 'تعذر حذف الإعلان');
+        }
+    };
+
+    const toggleAdActive = async (ad) => {
+        try {
+            const { data } = await API.put(`/ads/${ad._id}`, {
+                ...ad,
+                active: !ad.active,
+                startsAt: ad.startsAt || null,
+                endsAt: ad.endsAt || null,
+            });
+            setAds((current) => current.map((item) => (item._id === ad._id ? data : item)));
+        } catch (err) {
+            setMessage(err.response?.data?.message || 'تعذر تحديث حالة الإعلان');
         }
     };
 
@@ -413,13 +519,16 @@ export default function AdminDashboard() {
                         <button type="button" onClick={() => setActiveTab('curriculum')}>
                             2. تجهيز الدروس والفيديوهات
                         </button>
+                        <button type="button" onClick={() => setActiveTab('ads')}>
+                            3. إعلانات الصفحة الرئيسية
+                        </button>
                         {priorityReadinessRow && (
                             <button type="button" onClick={() => {
                                 setActiveTab('curriculum');
                                 setSelectedManageCourseId(priorityReadinessRow.course._id);
                                 fetchLessonsForCourse(priorityReadinessRow.course._id, priorityReadinessRow.lesson._id);
                             }}>
-                                3. أصلح أول نقص محتوى
+                                4. أصلح أول نقص محتوى
                             </button>
                         )}
                     </div>
@@ -438,6 +547,12 @@ export default function AdminDashboard() {
                         className={`tab-btn ${activeTab === 'curriculum' ? 'active' : ''}`}
                     >
                         إدارة المناهج والدروس 📚
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('ads')}
+                        className={`tab-btn ${activeTab === 'ads' ? 'active' : ''}`}
+                    >
+                        إعلانات الصفحة الرئيسية 📣 ({ads.filter((ad) => ad.active).length} نشط)
                     </button>
                 </div>
 
@@ -507,6 +622,183 @@ export default function AdminDashboard() {
                                 ))}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Ads Tab */}
+                {activeTab === 'ads' && (
+                    <div className="ads-manager-layout">
+                        <form className="card ads-editor-card" onSubmit={saveAd}>
+                            <div className="section-heading compact-heading">
+                                <div>
+                                    <span className="eyebrow">إعلانات الصفحة الرئيسية</span>
+                                    <h2>{editingAdId ? 'تعديل الإعلان' : 'إعلان جديد'}</h2>
+                                </div>
+                                {editingAdId && (
+                                    <button type="button" className="small-button secondary" onClick={resetAdForm}>
+                                        إنشاء إعلان جديد
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="ads-form-grid">
+                                <label>
+                                    الشارة الصغيرة
+                                    <input
+                                        value={adForm.badge}
+                                        onChange={(event) => handleAdFormChange('badge', event.target.value)}
+                                        placeholder="عرض تعليمي"
+                                    />
+                                </label>
+                                <label>
+                                    الأيقونة
+                                    <input
+                                        value={adForm.icon}
+                                        onChange={(event) => handleAdFormChange('icon', event.target.value)}
+                                        placeholder="📣"
+                                        maxLength="8"
+                                    />
+                                </label>
+                                <label className="span-2">
+                                    عنوان الإعلان
+                                    <input
+                                        value={adForm.title}
+                                        onChange={(event) => handleAdFormChange('title', event.target.value)}
+                                        placeholder="جلسة تعريفية مجانية للأهل"
+                                        required
+                                    />
+                                </label>
+                                <label className="span-2">
+                                    الوصف
+                                    <textarea
+                                        value={adForm.description}
+                                        onChange={(event) => handleAdFormChange('description', event.target.value)}
+                                        placeholder="اكتب وصفًا قصيرًا واضحًا للعرض..."
+                                        rows="3"
+                                        required
+                                    />
+                                </label>
+                                <label>
+                                    نص الزر
+                                    <input
+                                        value={adForm.ctaLabel}
+                                        onChange={(event) => handleAdFormChange('ctaLabel', event.target.value)}
+                                        placeholder="ابدأ الآن"
+                                    />
+                                </label>
+                                <label>
+                                    الرابط
+                                    <input
+                                        value={adForm.ctaHref}
+                                        onChange={(event) => handleAdFormChange('ctaHref', event.target.value)}
+                                        placeholder="/register أو https://..."
+                                    />
+                                </label>
+                                <label>
+                                    الجمهور
+                                    <select
+                                        value={adForm.audience}
+                                        onChange={(event) => handleAdFormChange('audience', event.target.value)}
+                                    >
+                                        <option value="all">الجميع</option>
+                                        <option value="students">طلاب</option>
+                                        <option value="parents">أولياء الأمور</option>
+                                        <option value="teachers">معلمون</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    الترتيب
+                                    <input
+                                        type="number"
+                                        value={adForm.order}
+                                        onChange={(event) => handleAdFormChange('order', event.target.value)}
+                                        min="1"
+                                    />
+                                </label>
+                                <label>
+                                    يبدأ في
+                                    <input
+                                        type="date"
+                                        value={adForm.startsAt}
+                                        onChange={(event) => handleAdFormChange('startsAt', event.target.value)}
+                                    />
+                                </label>
+                                <label>
+                                    ينتهي في
+                                    <input
+                                        type="date"
+                                        value={adForm.endsAt}
+                                        onChange={(event) => handleAdFormChange('endsAt', event.target.value)}
+                                    />
+                                </label>
+                                <label className="ad-active-toggle span-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={adForm.active}
+                                        onChange={(event) => handleAdFormChange('active', event.target.checked)}
+                                    />
+                                    الإعلان نشط ويظهر في الصفحة الرئيسية عند تحقق الجدولة
+                                </label>
+                            </div>
+
+                            <div className="ads-preview-card">
+                                <span className="home-ad-icon" aria-hidden="true">{adForm.icon || '📣'}</span>
+                                <div>
+                                    <span className="tag soft-tag">{adForm.badge || 'شارة الإعلان'}</span>
+                                    <h3>{adForm.title || 'عنوان الإعلان سيظهر هنا'}</h3>
+                                    <p>{adForm.description || 'وصف مختصر للعرض أو الإعلان.'}</p>
+                                </div>
+                                {adForm.ctaLabel && <span className="small-button secondary">{adForm.ctaLabel}</span>}
+                            </div>
+
+                            <button className="button" type="submit" disabled={savingAd}>
+                                {savingAd ? 'جاري الحفظ...' : editingAdId ? 'حفظ التعديل' : 'نشر الإعلان'}
+                            </button>
+                        </form>
+
+                        <div className="card ads-list-card">
+                            <div className="section-heading compact-heading">
+                                <div>
+                                    <span className="eyebrow">الإعلانات الحالية</span>
+                                    <h2>{ads.length} إعلان</h2>
+                                </div>
+                            </div>
+
+                            {ads.length === 0 ? (
+                                <div className="empty-state-card">
+                                    <strong>لا توجد إعلانات بعد.</strong>
+                                    <p>أنشئ أول إعلان ليظهر في الصفحة الرئيسية.</p>
+                                </div>
+                            ) : (
+                                <div className="admin-ad-list">
+                                    {ads.map((ad) => (
+                                        <article key={ad._id} className={`admin-ad-row ${ad.active ? 'active' : 'inactive'}`}>
+                                            <span className="home-ad-icon" aria-hidden="true">{ad.icon || '📣'}</span>
+                                            <div>
+                                                <strong>{ad.title}</strong>
+                                                <p>{ad.description}</p>
+                                                <small>
+                                                    ترتيب {ad.order} · {ad.audience === 'all' ? 'الجميع' : ad.audience}
+                                                    {ad.startsAt ? ` · يبدأ ${new Date(ad.startsAt).toLocaleDateString('ar-EG')}` : ''}
+                                                    {ad.endsAt ? ` · ينتهي ${new Date(ad.endsAt).toLocaleDateString('ar-EG')}` : ''}
+                                                </small>
+                                            </div>
+                                            <div className="admin-ad-actions">
+                                                <button type="button" className="small-button secondary" onClick={() => editAd(ad)}>
+                                                    تعديل
+                                                </button>
+                                                <button type="button" className="small-button secondary" onClick={() => toggleAdActive(ad)}>
+                                                    {ad.active ? 'إيقاف' : 'تفعيل'}
+                                                </button>
+                                                <button type="button" className="small-button btn-danger" onClick={() => deleteAd(ad._id)}>
+                                                    حذف
+                                                </button>
+                                            </div>
+                                        </article>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 

@@ -2153,6 +2153,106 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.86rem;
 }
 
+.ads-manager-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(320px, 0.7fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.ads-editor-card,
+.ads-list-card {
+    border-radius: 24px;
+}
+
+.ads-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.ads-form-grid .span-2 {
+    grid-column: 1 / -1;
+}
+
+.ad-active-toggle {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface-soft);
+    font-weight: 800;
+}
+
+.ad-active-toggle input {
+    width: auto;
+    margin: 0;
+}
+
+.ads-preview-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    margin: 18px 0;
+    padding: 16px;
+    border: 1px dashed rgba(79, 70, 229, 0.28);
+    border-radius: 20px;
+    background:
+        radial-gradient(circle at 8% 12%, rgba(251, 191, 36, 0.12), transparent 32%),
+        rgba(255,255,255,0.86);
+}
+
+.ads-preview-card h3 {
+    margin: 8px 0 4px;
+}
+
+.admin-ad-list {
+    display: grid;
+    gap: 12px;
+}
+
+.admin-ad-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: rgba(255,255,255,0.86);
+}
+
+.admin-ad-row.inactive {
+    opacity: 0.66;
+    background: var(--surface-soft);
+}
+
+.admin-ad-row strong,
+.admin-ad-row small {
+    display: block;
+}
+
+.admin-ad-row p {
+    margin: 5px 0;
+    font-size: 0.84rem;
+}
+
+.admin-ad-row small {
+    color: var(--text-muted);
+    font-weight: 800;
+}
+
+.admin-ad-actions {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
 .landing-audience-grid,
 .landing-flow-grid {
     display: grid;
@@ -3712,6 +3812,7 @@ input:focus, select:focus, textarea:focus {
     .course-catalog-grid,
     .course-detail-hero,
     .teacher-layout,
+    .ads-manager-layout,
     .landing-hero,
     .landing-audience-grid,
     .landing-flow-grid,
@@ -3794,9 +3895,20 @@ input:focus, select:focus, textarea:focus {
         grid-template-columns: auto minmax(0, 1fr);
     }
 
+    .admin-ad-row,
+    .ads-preview-card {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
     .home-ad-card .small-button {
         grid-column: 1 / -1;
         justify-content: center;
+    }
+
+    .admin-ad-actions,
+    .ads-preview-card .small-button {
+        grid-column: 1 / -1;
+        justify-content: stretch;
     }
 
     .ai-review-header {
@@ -3951,6 +4063,7 @@ input:focus, select:focus, textarea:focus {
     .parent-course-header,
     .parent-next-action-card,
     .ai-review-header,
+    .ads-form-grid,
     .parent-certificate-strip {
         align-items: stretch;
         grid-template-columns: 1fr;

@@ -24,12 +24,19 @@ const homeAds = [
 
 export default function Home() {
     const [courses, setCourses] = useState([]);
+    const [ads, setAds] = useState(homeAds);
     const [catalogError, setCatalogError] = useState('');
 
     useEffect(() => {
         API.get('/courses')
             .then(({ data }) => setCourses(data))
             .catch(() => setCatalogError('تعذر تحميل دليل الدورات حالياً.'));
+
+        API.get('/ads/public/home')
+            .then(({ data }) => {
+                if (data?.length) setAds(data);
+            })
+            .catch(() => setAds(homeAds));
     }, []);
 
     return (
@@ -73,7 +80,7 @@ export default function Home() {
                 </div>
 
                 <div className="home-ads-grid">
-                    {homeAds.map((ad) => (
+                    {ads.map((ad) => (
                         <article className="home-ad-card" key={ad.title}>
                             <span className="home-ad-icon" aria-hidden="true">{ad.icon}</span>
                             <div>
@@ -81,9 +88,11 @@ export default function Home() {
                                 <h3>{ad.title}</h3>
                                 <p>{ad.description}</p>
                             </div>
-                            <Link href={ad.href} className="small-button secondary">
-                                {ad.action}
-                            </Link>
+                            {(ad.ctaHref || ad.href) && (
+                                <Link href={ad.ctaHref || ad.href} className="small-button secondary">
+                                    {ad.ctaLabel || ad.action || 'المزيد'}
+                                </Link>
+                            )}
                         </article>
                     ))}
                 </div>

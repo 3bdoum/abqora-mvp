@@ -184,6 +184,12 @@ The same admin curriculum page includes a content readiness dashboard. It calcul
 
 Teachers and admins can use **لوحة المعلم** to search assigned students, filter lessons by review status, apply feedback templates, approve/reject completion requests, manually unlock/relock lessons, and see per-lesson content readiness hints for videos, Code.org links, and quizzes.
 
+## Home page ads and offers
+
+Admins can manage the public home page ads/offers from **Admin > إعلانات الصفحة الرئيسية**. Ads support title, badge, icon, description, button text/link, active state, display order, audience label, and optional start/end dates.
+
+The public home page loads active ads from `/api/ads/public/home`. If no active ads are available, the frontend keeps safe fallback offer cards so the layout does not look empty. Ad links must be either internal paths such as `/register` or HTTPS URLs.
+
 ## Student AI tutor
 
 The lesson page includes an optional Arabic AI tutor for students. It is scoped to the currently available lesson, uses the student's age group for tone, and is designed to give hints and explain the exercise without providing copy-ready full answers.
