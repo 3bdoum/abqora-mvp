@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Head from 'next/head';
 import Link from 'next/link';
 import CourseCard from '../components/CourseCard';
 import API from '../utils/api';
@@ -40,6 +41,18 @@ export default function Home() {
     }, []);
 
     return (
+        <>
+        <Head>
+            <title>عبقورا | تعلم البرمجة للأطفال بالعربية</title>
+            <meta
+                name="description"
+                content="عبقورا منصة عربية لتعليم البرمجة للأطفال بخطوات بسيطة: فيديو شرح، تطبيق عملي، ومتابعة آمنة من المعلم وولي الأمر."
+            />
+            <meta property="og:title" content="عبقورا | تعلم البرمجة للأطفال بالعربية" />
+            <meta property="og:description" content="مسارات برمجة عربية للأطفال مع شرح مبسط ومتابعة آمنة." />
+            <meta property="og:type" content="website" />
+        </Head>
+
         <main className="page shell rtl home-page">
             <section className="hero-card home-hero landing-hero">
                 <div className="landing-hero-copy">
@@ -68,6 +81,17 @@ export default function Home() {
                         <span>أدوار متابعة</span>
                     </div>
                 </div>
+            </section>
+
+            <section className="public-result-card" aria-labelledby="thanaweya-public-title">
+                <div>
+                    <span className="eyebrow">خدمة عامة للأسر والطلاب</span>
+                    <h2 id="thanaweya-public-title">نتيجة الثانوية العامة من المصدر الرسمي</h2>
+                    <p>
+                        صفحة إرشادية آمنة تساعد الطلاب يعرفون خطوات الوصول للنتيجة الرسمية، وتحسب النسبة التقريبية بدون تخزين رقم الجلوس أو بيانات الطالب.
+                    </p>
+                </div>
+                <Link href="/thanaweya-result" className="button">افتح صفحة النتيجة</Link>
             </section>
 
             <section className="home-ads-section" aria-labelledby="home-ads-title">
@@ -164,5 +188,6 @@ export default function Home() {
                 <Link href="/register" className="button">إنشاء حساب جديد</Link>
             </section>
         </main>
+        </>
     );
 }
