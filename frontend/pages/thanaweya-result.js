@@ -100,11 +100,47 @@ const motivationVideos = [
     },
 ];
 
+const resultGameCards = [
+    {
+        id: 'official-link',
+        icon: '🔗',
+        title: 'اختار الرابط الرسمي',
+        prompt: 'ابدأ من موقع الوزارة فقط.',
+        reward: 'نجمة المصدر الآمن',
+        done: 'ممتاز! المصدر الرسمي هو البداية الصح.',
+    },
+    {
+        id: 'privacy',
+        icon: '🛡️',
+        title: 'احمِ رقم الجلوس',
+        prompt: 'لا تكتبه في تعليقات أو صفحات مجهولة.',
+        reward: 'نجمة الأمان',
+        done: 'رائع! بياناتك الشخصية لازم تفضل خاصة.',
+    },
+    {
+        id: 'calm',
+        icon: '🌬️',
+        title: 'اهدأ 30 ثانية',
+        prompt: 'خذ نفسًا عميقًا قبل فتح النتيجة.',
+        reward: 'نجمة الهدوء',
+        done: 'جميل! الهدوء يساعدك تقرأ النتيجة بوضوح.',
+    },
+    {
+        id: 'skill',
+        icon: '🚀',
+        title: 'اختار مهارة تبدأ بها',
+        prompt: 'لغة، برمجة، تصميم، أو عادة مذاكرة.',
+        reward: 'نجمة المستقبل',
+        done: 'قوي! مهارة واحدة صغيرة ممكن تغيّر الطريق.',
+    },
+];
+
 export default function ThanaweyaResultPage() {
     const [activeMode, setActiveMode] = useState(journeyModes[0].id);
     const [score, setScore] = useState('');
     const [total, setTotal] = useState('410');
     const [checkedItems, setCheckedItems] = useState({});
+    const [completedGameCards, setCompletedGameCards] = useState({});
 
     const selectedMode = journeyModes.find((mode) => mode.id === activeMode) || journeyModes[0];
 
@@ -163,10 +199,25 @@ export default function ThanaweyaResultPage() {
     }, [percentage]);
 
     const checklistProgress = selectedMode.checklist.filter((item) => checkedItems[`${selectedMode.id}-${item}`]).length;
+    const completedGameCount = resultGameCards.filter((card) => completedGameCards[card.id]).length;
+    const gameProgress = Math.round((completedGameCount / resultGameCards.length) * 100);
+    const gameMessage = completedGameCount === resultGameCards.length
+        ? 'جاهز! عندك خطة آمنة وهادئة لما تفتح النتيجة.'
+        : completedGameCount > 0
+            ? 'جميل جدًا، كمّل باقي النجوم وخلي التجربة أهدأ.'
+            : 'اضغط على البطاقات واجمع النجوم قبل ما تفتح النتيجة.';
 
     const toggleChecklist = (item) => {
         const key = `${selectedMode.id}-${item}`;
         setCheckedItems((current) => ({ ...current, [key]: !current[key] }));
+    };
+
+    const toggleGameCard = (cardId) => {
+        setCompletedGameCards((current) => ({ ...current, [cardId]: !current[cardId] }));
+    };
+
+    const resetGame = () => {
+        setCompletedGameCards({});
     };
 
     const handleModeAction = (event) => {
@@ -240,6 +291,11 @@ export default function ThanaweyaResultPage() {
                                 </button>
                             ))}
                         </div>
+
+                        <a href="#result-game" className="result-hero-game-cta">
+                            <span aria-hidden="true">🎮</span>
+                            جرّب لعبة الأربع نجوم
+                        </a>
                     </div>
 
                     <aside className="result-live-card" aria-live="polite">
@@ -337,6 +393,58 @@ export default function ThanaweyaResultPage() {
                             <span>{description}</span>
                         </div>
                     ))}
+                </section>
+
+                <section className="result-game-section" id="result-game" aria-labelledby="result-game-title">
+                    <div className="result-game-copy">
+                        <span className="eyebrow">لعبة 30 ثانية</span>
+                        <h2 id="result-game-title">اجمع 4 نجوم قبل النتيجة</h2>
+                        <p>
+                            لعبة بسيطة تساعد الطالب يبدأ بهدوء: مصدر رسمي، أمان، نفس عميق، وخطوة مهارة بعد النتيجة.
+                        </p>
+
+                        <div className="result-game-score" aria-live="polite">
+                            <strong>{completedGameCount}/{resultGameCards.length}</strong>
+                            <span>نجوم جاهزة</span>
+                        </div>
+
+                        <div className="result-game-progress" aria-hidden="true">
+                            <span style={{ width: `${gameProgress}%` }} />
+                        </div>
+
+                        <p className="result-game-message">{gameMessage}</p>
+
+                        <button
+                            type="button"
+                            className="small-button"
+                            onClick={resetGame}
+                            disabled={completedGameCount === 0}
+                        >
+                            إعادة اللعبة
+                        </button>
+                    </div>
+
+                    <div className="result-game-board" aria-label="بطاقات لعبة الاستعداد للنتيجة">
+                        {resultGameCards.map((card) => {
+                            const isDone = Boolean(completedGameCards[card.id]);
+                            return (
+                                <button
+                                    key={card.id}
+                                    type="button"
+                                    className={`result-game-card ${isDone ? 'done' : ''}`}
+                                    onClick={() => toggleGameCard(card.id)}
+                                    aria-pressed={isDone}
+                                >
+                                    <span className="result-game-card-icon" aria-hidden="true">
+                                        {isDone ? '⭐' : card.icon}
+                                    </span>
+                                    <small>{card.reward}</small>
+                                    <strong>{card.title}</strong>
+                                    <p>{isDone ? card.done : card.prompt}</p>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </section>
 
                 <section className="result-workspace">

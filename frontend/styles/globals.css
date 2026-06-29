@@ -2680,6 +2680,7 @@ input:focus, select:focus, textarea:focus {
 
 #result-top,
 #result-videos,
+#result-game,
 #result-calculator,
 #result-plan {
     scroll-margin-top: 96px;
@@ -2824,6 +2825,43 @@ input:focus, select:focus, textarea:focus {
 
 .result-mode-button.active {
     box-shadow: 0 12px 24px rgba(79, 70, 229, 0.14);
+}
+
+.result-hero-game-cta {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 14px;
+    padding: 11px 14px;
+    overflow: hidden;
+    border: 1px solid rgba(79, 70, 229, 0.18);
+    border-radius: 999px;
+    background:
+        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.52), transparent 24%),
+        linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(6, 182, 212, 0.14));
+    color: var(--primary);
+    font-size: 0.86rem;
+    font-weight: 950;
+    text-decoration: none;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    animation: resultGamePulse 3.6s ease-in-out infinite;
+}
+
+.result-hero-game-cta:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: var(--shadow-md);
+}
+
+.result-hero-game-cta span {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
 }
 
 .result-live-card {
@@ -3068,6 +3106,244 @@ input:focus, select:focus, textarea:focus {
     color: var(--text-muted);
     font-size: 0.86rem;
     font-weight: 800;
+}
+
+.result-game-section {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(280px, 0.58fr) minmax(0, 1fr);
+    gap: 18px;
+    align-items: stretch;
+    margin: 16px 0;
+    padding: 22px;
+    overflow: hidden;
+    border: 1px solid rgba(79, 70, 229, 0.16);
+    border-radius: 30px;
+    background:
+        radial-gradient(circle at 8% 18%, rgba(245, 158, 11, 0.16), transparent 28%),
+        radial-gradient(circle at 92% 78%, rgba(6, 182, 212, 0.14), transparent 34%),
+        linear-gradient(135deg, rgba(255,255,255,0.94), rgba(239,246,255,0.9));
+    box-shadow: 0 26px 70px rgba(15, 23, 42, 0.1);
+    animation: resultCardLiftIn 0.66s ease both;
+}
+
+.result-game-section::before,
+.result-game-section::after {
+    content: '';
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+}
+
+.result-game-section::before {
+    width: 130px;
+    height: 130px;
+    right: -46px;
+    top: -42px;
+    background: rgba(79, 70, 229, 0.11);
+    animation: resultOrbFloat 7.2s ease-in-out infinite;
+}
+
+.result-game-section::after {
+    width: 90px;
+    height: 90px;
+    left: 10%;
+    bottom: -38px;
+    background: rgba(245, 158, 11, 0.12);
+    animation: resultOrbFloat 8.4s -2s ease-in-out infinite;
+}
+
+.result-game-copy,
+.result-game-board {
+    position: relative;
+    z-index: 1;
+}
+
+.result-game-copy {
+    padding: 16px;
+    border: 1px solid rgba(255,255,255,0.74);
+    border-radius: 24px;
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(12px);
+}
+
+.result-game-copy h2 {
+    margin-bottom: 8px;
+}
+
+.result-game-copy p {
+    font-size: 0.9rem;
+}
+
+.result-game-score {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 18px 0 10px;
+}
+
+.result-game-score strong {
+    color: var(--primary);
+    font-size: 2.45rem;
+    line-height: 1;
+}
+
+.result-game-score span {
+    color: var(--text);
+    font-weight: 950;
+}
+
+.result-game-progress {
+    height: 12px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(226, 232, 240, 0.92);
+}
+
+.result-game-progress span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #f59e0b, var(--primary), var(--accent));
+    transition: width 0.28s ease;
+}
+
+.result-game-message {
+    min-height: 48px;
+    margin: 12px 0 14px;
+    padding: 12px;
+    border: 1px solid rgba(79, 70, 229, 0.12);
+    border-radius: 18px;
+    background: rgba(255,255,255,0.68);
+    color: var(--text);
+    font-weight: 850;
+}
+
+.result-game-copy .small-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.result-game-board {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.result-game-card {
+    position: relative;
+    min-height: 164px;
+    display: grid;
+    align-content: start;
+    gap: 7px;
+    padding: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(79, 70, 229, 0.13);
+    border-radius: 24px;
+    background: rgba(255,255,255,0.9);
+    color: var(--text);
+    font-family: inherit;
+    text-align: right;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    animation: resultGameCardIn 0.64s ease both;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.result-game-card:nth-child(2) {
+    animation-delay: 0.07s;
+}
+
+.result-game-card:nth-child(3) {
+    animation-delay: 0.14s;
+}
+
+.result-game-card:nth-child(4) {
+    animation-delay: 0.21s;
+}
+
+.result-game-card::before {
+    content: '';
+    position: absolute;
+    inset: auto -20px -46px -20px;
+    height: 86px;
+    border-radius: 999px;
+    background: rgba(79, 70, 229, 0.12);
+    filter: blur(26px);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.result-game-card:hover,
+.result-game-card.done {
+    transform: translateY(-5px) rotate(-0.6deg);
+    border-color: rgba(16, 185, 129, 0.34);
+    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
+}
+
+.result-game-card:hover::before,
+.result-game-card.done::before {
+    opacity: 1;
+}
+
+.result-game-card.done {
+    background:
+        radial-gradient(circle at 12% 10%, rgba(245, 158, 11, 0.16), transparent 28%),
+        rgba(236, 253, 245, 0.96);
+}
+
+.result-game-card.done::after {
+    content: '✦';
+    position: absolute;
+    left: 16px;
+    top: 12px;
+    color: #f59e0b;
+    font-size: 1.55rem;
+    animation: resultGameSpark 1.8s ease-in-out infinite;
+}
+
+.result-game-card-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 18px;
+    background: var(--primary-light);
+    font-size: 1.35rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.result-game-card.done .result-game-card-icon {
+    background: #fef3c7;
+}
+
+.result-game-card small,
+.result-game-card strong,
+.result-game-card p {
+    position: relative;
+    z-index: 1;
+}
+
+.result-game-card small {
+    color: var(--primary);
+    font-size: 0.74rem;
+    font-weight: 950;
+}
+
+.result-game-card strong {
+    font-size: 1rem;
+}
+
+.result-game-card p {
+    margin-bottom: 0;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    line-height: 1.65;
+}
+
+.result-game-card.done p {
+    color: #065f46;
 }
 
 .result-video-section {
@@ -3643,6 +3919,37 @@ input:focus, select:focus, textarea:focus {
     }
     100% {
         transform: translateX(-60%) rotate(8deg);
+    }
+}
+
+@keyframes resultGamePulse {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+@keyframes resultGameCardIn {
+    from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes resultGameSpark {
+    0%, 100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(1.18) rotate(-12deg);
+        opacity: 1;
     }
 }
 
@@ -5126,6 +5433,7 @@ input:focus, select:focus, textarea:focus {
     .result-dynamic-hero,
     .result-grid,
     .result-quick-stats,
+    .result-game-section,
     .result-video-heading,
     .result-video-grid,
     .result-workspace,
@@ -5232,6 +5540,10 @@ input:focus, select:focus, textarea:focus {
 
     .result-video-grid {
         grid-template-columns: 1fr;
+    }
+
+    .result-game-board {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .parent-stat-grid {
@@ -5409,6 +5721,24 @@ input:focus, select:focus, textarea:focus {
         border-radius: 22px;
     }
 
+    .result-game-section {
+        padding: 14px;
+        border-radius: 22px;
+    }
+
+    .result-game-copy {
+        padding: 14px;
+        border-radius: 20px;
+    }
+
+    .result-game-board {
+        grid-template-columns: 1fr;
+    }
+
+    .result-game-card {
+        min-height: auto;
+    }
+
     .result-motion-stage {
         min-height: 150px;
         grid-row: auto;
@@ -5564,6 +5894,7 @@ input:focus, select:focus, textarea:focus {
     .result-hero-orb,
     .result-floating-shape,
     .result-live-card,
+    .result-hero-game-cta,
     .result-motion-stage::before,
     .motion-browser,
     .motion-scan-line,
@@ -5575,6 +5906,11 @@ input:focus, select:focus, textarea:focus {
     .result-calculator-card.dynamic,
     .result-action-strip,
     .result-help-tile,
+    .result-game-section,
+    .result-game-section::before,
+    .result-game-section::after,
+    .result-game-card,
+    .result-game-card.done::after,
     .result-video-section,
     .result-video-card,
     .result-video-frame::before,
@@ -5589,6 +5925,9 @@ input:focus, select:focus, textarea:focus {
     .result-calculator-card.dynamic:hover,
     .result-help-tile:hover,
     .result-help-tile.active,
+    .result-hero-game-cta:hover,
+    .result-game-card:hover,
+    .result-game-card.done,
     .result-video-card:hover {
         transform: none;
     }
