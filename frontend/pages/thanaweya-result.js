@@ -63,27 +63,30 @@ const motionCards = [
 
 const motivationVideos = [
     {
-        title: 'ابدأ بهدوء بعد النتيجة',
-        description: 'رسالة قصيرة: النتيجة خطوة، وليست نهاية الطريق. خذ نفسًا ثم ابدأ خطة صغيرة.',
-        duration: '1:20',
-        src: '/videos/abqora-intro.mp4',
-        mood: 'هدوء',
+        title: 'قوة الاستمرار بعد أي نتيجة',
+        description: 'فكرة TED عن الشغف والمثابرة: النتيجة ليست نهاية القصة، الاستمرار الذكي يصنع الفرق.',
+        duration: '6:12',
+        youtubeId: 'H14bBuluwB8',
+        sourceLabel: 'TED · YouTube',
+        mood: 'استمرار',
+        icon: '🔥',
+    },
+    {
+        title: 'عقلية النمو: أقدر أتحسن',
+        description: 'فيديو مناسب لفكرة أن المهارة تتطور بالتدريب، وأن الخطأ أو النتيجة ليسا حكمًا نهائيًا.',
+        duration: '10:21',
+        youtubeId: '_X0mgOOSpLU',
+        sourceLabel: 'TEDx · YouTube',
+        mood: 'نمو',
         icon: '🌱',
     },
     {
-        title: 'حوّل القلق إلى خطة',
-        description: 'فكّر في 3 بدائل واضحة بدل التشتت بين اختيارات كثيرة بعد ظهور النتيجة.',
-        duration: '0:55',
-        src: '/videos/abqora-intro.mp4',
-        mood: 'تركيز',
-        icon: '🎯',
-    },
-    {
-        title: 'مهارة واحدة تكفي كبداية',
-        description: 'ابدأ بمهارة صغيرة هذا الأسبوع: لغة، برمجة، أو عادة مذاكرة منظمة.',
+        title: 'رسالة عبقورا: مهارة واحدة تكفي كبداية',
+        description: 'ابدأ بمهارة صغيرة هذا الأسبوع: لغة، برمجة، أو عادة مذاكرة منظمة. سنستبدله لاحقًا بفيديو خاص من عبقورا.',
         duration: '1:05',
         src: '/videos/abqora-intro.mp4',
-        mood: 'تحفيز',
+        sourceLabel: 'عبقورا',
+        mood: 'خطوة أولى',
         icon: '⚡',
     },
 ];
@@ -296,18 +299,28 @@ export default function ThanaweyaResultPage() {
                         {motivationVideos.map((video, index) => (
                             <article className="result-video-card" key={video.title}>
                                 <div className="result-video-frame">
-                                    <video
-                                        src={withBasePath(video.src)}
-                                        controls
-                                        preload="metadata"
-                                        playsInline
-                                        aria-label={video.title}
-                                    />
+                                    {video.youtubeId ? (
+                                        <iframe
+                                            src={`https://www.youtube-nocookie.com/embed/${video.youtubeId}`}
+                                            title={video.title}
+                                            loading="lazy"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                            allowFullScreen
+                                        />
+                                    ) : (
+                                        <video
+                                            src={withBasePath(video.src)}
+                                            controls
+                                            preload="metadata"
+                                            playsInline
+                                            aria-label={video.title}
+                                        />
+                                    )}
                                     <span className="result-video-mood">{video.icon} {video.mood}</span>
                                     <span className="result-video-duration">{video.duration}</span>
                                 </div>
                                 <div className="result-video-copy">
-                                    <span>فيديو {index + 1}</span>
+                                    <span>فيديو {index + 1} · {video.sourceLabel}</span>
                                     <h3>{video.title}</h3>
                                     <p>{video.description}</p>
                                 </div>

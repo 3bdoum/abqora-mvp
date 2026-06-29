@@ -3166,12 +3166,14 @@ input:focus, select:focus, textarea:focus {
     pointer-events: none;
 }
 
-.result-video-frame video {
+.result-video-frame video,
+.result-video-frame iframe {
     position: relative;
     z-index: 0;
     width: 100%;
     height: 100%;
     display: block;
+    border: 0;
     object-fit: cover;
     opacity: 0.94;
 }
