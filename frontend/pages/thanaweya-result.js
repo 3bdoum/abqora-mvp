@@ -61,6 +61,36 @@ const motionCards = [
     ['3', 'احسب النسبة', '🧮'],
 ];
 
+const motivationVideos = [
+    {
+        title: 'قوة الاستمرار بعد أي نتيجة',
+        description: 'فكرة TED عن الشغف والمثابرة: النتيجة ليست نهاية القصة، الاستمرار الذكي يصنع الفرق.',
+        duration: '6:12',
+        youtubeId: 'H14bBuluwB8',
+        sourceLabel: 'TED · YouTube',
+        mood: 'استمرار',
+        icon: '🔥',
+    },
+    {
+        title: 'عقلية النمو: أقدر أتحسن',
+        description: 'فيديو مناسب لفكرة أن المهارة تتطور بالتدريب، وأن الخطأ أو النتيجة ليسا حكمًا نهائيًا.',
+        duration: '10:21',
+        youtubeId: '_X0mgOOSpLU',
+        sourceLabel: 'TEDx · YouTube',
+        mood: 'نمو',
+        icon: '🌱',
+    },
+    {
+        title: 'رسالة عبقورا: مهارة واحدة تكفي كبداية',
+        description: 'ابدأ بمهارة صغيرة هذا الأسبوع: لغة، برمجة، أو عادة مذاكرة منظمة. سنستبدله لاحقًا بفيديو خاص من عبقورا.',
+        duration: '1:05',
+        src: '/videos/abqora-intro.mp4',
+        sourceLabel: 'عبقورا',
+        mood: 'خطوة أولى',
+        icon: '⚡',
+    },
+];
+
 export default function ThanaweyaResultPage() {
     const [activeMode, setActiveMode] = useState(journeyModes[0].id);
     const [score, setScore] = useState('');
@@ -254,6 +284,49 @@ export default function ThanaweyaResultPage() {
                             <span>{description}</span>
                         </div>
                     ))}
+                </section>
+
+                <section className="result-video-section" aria-labelledby="result-videos-title">
+                    <div className="result-video-heading">
+                        <div>
+                            <span className="eyebrow">فيديوهات تحفيزية قصيرة</span>
+                            <h2 id="result-videos-title">قبل ما تبدأ… دقيقة هدوء وتركيز</h2>
+                        </div>
+                        <p>مقاطع قصيرة تساعد الطالب يهدأ، يرتّب أفكاره، ويبدأ بخطوة عملية بعد النتيجة.</p>
+                    </div>
+
+                    <div className="result-video-grid">
+                        {motivationVideos.map((video, index) => (
+                            <article className="result-video-card" key={video.title}>
+                                <div className="result-video-frame">
+                                    {video.youtubeId ? (
+                                        <iframe
+                                            src={`https://www.youtube-nocookie.com/embed/${video.youtubeId}`}
+                                            title={video.title}
+                                            loading="lazy"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                            allowFullScreen
+                                        />
+                                    ) : (
+                                        <video
+                                            src={withBasePath(video.src)}
+                                            controls
+                                            preload="metadata"
+                                            playsInline
+                                            aria-label={video.title}
+                                        />
+                                    )}
+                                    <span className="result-video-mood">{video.icon} {video.mood}</span>
+                                    <span className="result-video-duration">{video.duration}</span>
+                                </div>
+                                <div className="result-video-copy">
+                                    <span>فيديو {index + 1} · {video.sourceLabel}</span>
+                                    <h3>{video.title}</h3>
+                                    <p>{video.description}</p>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
                 </section>
 
                 <section className="result-workspace">
