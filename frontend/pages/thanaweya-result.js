@@ -81,12 +81,21 @@ const motivationVideos = [
         icon: '🌱',
     },
     {
-        title: 'رسالة عبقورا: مهارة واحدة تكفي كبداية',
-        description: 'ابدأ بمهارة صغيرة هذا الأسبوع: لغة، برمجة، أو عادة مذاكرة منظمة. سنستبدله لاحقًا بفيديو خاص من عبقورا.',
-        duration: '1:05',
-        src: '/videos/abqora-intro.mp4',
-        sourceLabel: 'عبقورا',
-        mood: 'خطوة أولى',
+        title: 'تطوير المهارات بالعربي',
+        description: 'فيديو عربي عن معنى تطوير المهارات ولماذا يحتاج الطالب يبني نفسه بعد النتيجة خطوة بخطوة.',
+        duration: 'متغير',
+        youtubeId: '5MTAMo0k67k',
+        sourceLabel: 'ياسر الحزيمي · YouTube',
+        mood: 'مهارات',
+        icon: '🧠',
+    },
+    {
+        title: 'تعلّم أي مهارة في 20 ساعة',
+        description: 'فيديو إنجليزي عملي عن طريقة البدء في أي مهارة جديدة وتقليل حاجز الخوف من البداية.',
+        duration: '19:27',
+        youtubeId: '5MgBikgcWnY',
+        sourceLabel: 'TEDx · YouTube',
+        mood: 'Skill',
         icon: '⚡',
     },
 ];
@@ -193,6 +202,7 @@ export default function ThanaweyaResultPage() {
                     <Link href="/" className="result-floating-brand">عبقورا</Link>
                     <div className="result-floating-links">
                         <a href="#result-top">الرئيسية</a>
+                        <a href="#result-videos">الفيديوهات</a>
                         <a href="#result-calculator">الحاسبة</a>
                         <a href="#result-plan">ماذا بعد؟</a>
                     </div>
@@ -271,28 +281,19 @@ export default function ThanaweyaResultPage() {
                         </a>
                     </aside>
 
-                    <a href="#result-calculator" className="result-scroll-cue" aria-label="انتقل إلى الحاسبة">
+                    <a href="#result-videos" className="result-scroll-cue" aria-label="انتقل إلى الفيديوهات">
                         <span>مرّر للأسفل</span>
                         <b aria-hidden="true">↓</b>
                     </a>
                 </section>
 
-                <section className="result-quick-stats" aria-label="لماذا هذه الصفحة آمنة؟">
-                    {quickStats.map(([title, description]) => (
-                        <div key={title}>
-                            <strong>{title}</strong>
-                            <span>{description}</span>
-                        </div>
-                    ))}
-                </section>
-
-                <section className="result-video-section" aria-labelledby="result-videos-title">
+                <section className="result-video-section" id="result-videos" aria-labelledby="result-videos-title">
                     <div className="result-video-heading">
                         <div>
-                            <span className="eyebrow">فيديوهات تحفيزية قصيرة</span>
-                            <h2 id="result-videos-title">قبل ما تبدأ… دقيقة هدوء وتركيز</h2>
+                            <span className="eyebrow">فيديوهات تحفيز ومهارات</span>
+                            <h2 id="result-videos-title">شاهد فكرة تساعدك تبدأ صح</h2>
                         </div>
-                        <p>مقاطع قصيرة تساعد الطالب يهدأ، يرتّب أفكاره، ويبدأ بخطوة عملية بعد النتيجة.</p>
+                        <p>اختر فيديو حسب حالتك: هدوء، عقلية نمو، تطوير مهارات بالعربي، أو طريقة عملية لتعلم أي مهارة.</p>
                     </div>
 
                     <div className="result-video-grid">
@@ -327,6 +328,15 @@ export default function ThanaweyaResultPage() {
                             </article>
                         ))}
                     </div>
+                </section>
+
+                <section className="result-quick-stats" aria-label="لماذا هذه الصفحة آمنة؟">
+                    {quickStats.map(([title, description]) => (
+                        <div key={title}>
+                            <strong>{title}</strong>
+                            <span>{description}</span>
+                        </div>
+                    ))}
                 </section>
 
                 <section className="result-workspace">
