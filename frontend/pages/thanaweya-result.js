@@ -61,6 +61,33 @@ const motionCards = [
     ['3', 'احسب النسبة', '🧮'],
 ];
 
+const motivationVideos = [
+    {
+        title: 'ابدأ بهدوء بعد النتيجة',
+        description: 'رسالة قصيرة: النتيجة خطوة، وليست نهاية الطريق. خذ نفسًا ثم ابدأ خطة صغيرة.',
+        duration: '1:20',
+        src: '/videos/abqora-intro.mp4',
+        mood: 'هدوء',
+        icon: '🌱',
+    },
+    {
+        title: 'حوّل القلق إلى خطة',
+        description: 'فكّر في 3 بدائل واضحة بدل التشتت بين اختيارات كثيرة بعد ظهور النتيجة.',
+        duration: '0:55',
+        src: '/videos/abqora-intro.mp4',
+        mood: 'تركيز',
+        icon: '🎯',
+    },
+    {
+        title: 'مهارة واحدة تكفي كبداية',
+        description: 'ابدأ بمهارة صغيرة هذا الأسبوع: لغة، برمجة، أو عادة مذاكرة منظمة.',
+        duration: '1:05',
+        src: '/videos/abqora-intro.mp4',
+        mood: 'تحفيز',
+        icon: '⚡',
+    },
+];
+
 export default function ThanaweyaResultPage() {
     const [activeMode, setActiveMode] = useState(journeyModes[0].id);
     const [score, setScore] = useState('');
@@ -254,6 +281,39 @@ export default function ThanaweyaResultPage() {
                             <span>{description}</span>
                         </div>
                     ))}
+                </section>
+
+                <section className="result-video-section" aria-labelledby="result-videos-title">
+                    <div className="result-video-heading">
+                        <div>
+                            <span className="eyebrow">فيديوهات تحفيزية قصيرة</span>
+                            <h2 id="result-videos-title">قبل ما تبدأ… دقيقة هدوء وتركيز</h2>
+                        </div>
+                        <p>مقاطع قصيرة تساعد الطالب يهدأ، يرتّب أفكاره، ويبدأ بخطوة عملية بعد النتيجة.</p>
+                    </div>
+
+                    <div className="result-video-grid">
+                        {motivationVideos.map((video, index) => (
+                            <article className="result-video-card" key={video.title}>
+                                <div className="result-video-frame">
+                                    <video
+                                        src={withBasePath(video.src)}
+                                        controls
+                                        preload="metadata"
+                                        playsInline
+                                        aria-label={video.title}
+                                    />
+                                    <span className="result-video-mood">{video.icon} {video.mood}</span>
+                                    <span className="result-video-duration">{video.duration}</span>
+                                </div>
+                                <div className="result-video-copy">
+                                    <span>فيديو {index + 1}</span>
+                                    <h3>{video.title}</h3>
+                                    <p>{video.description}</p>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
                 </section>
 
                 <section className="result-workspace">
