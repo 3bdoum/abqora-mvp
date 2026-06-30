@@ -96,8 +96,9 @@ MONGODB_URI=<your MongoDB Atlas connection string>
 JWT_SECRET=<a long random secret>
 CORS_ORIGIN=https://3bdoum.github.io
 FRONTEND_URL=https://3bdoum.github.io/abqora-mvp
-OPENAI_API_KEY=<optional, enables the student AI tutor>
-OPENAI_MODEL=gpt-4.1-mini
+AI_PROVIDER=gemini
+GEMINI_API_KEY=<your Google AI Studio API key>
+GEMINI_MODEL=gemini-3.1-flash-lite
 ```
 
 After deploying backend code, run `npm run migrate:courses` once from the Render Shell to update course and lesson records without creating demo users. Run the seed script only for demo/test databases, and never after real users exist. In production it is blocked unless `ALLOW_PRODUCTION_SEED=true` is set intentionally.
@@ -196,13 +197,29 @@ The lesson page includes an optional Arabic AI tutor for students. It is scoped 
 
 The AI tutor:
 
-- runs only through the backend; never expose `OPENAI_API_KEY` in frontend code;
+- runs only through the backend; never expose `GEMINI_API_KEY`, `OPENAI_API_KEY`, or any AI provider key in frontend code;
 - checks the same lesson prerequisite rules as lesson access, so locked lessons cannot be queried through direct API calls;
 - cannot approve completions, unlock lessons, or change progress;
 - stores student questions and assistant replies in MongoDB for supervision and future review;
 - blocks obvious requests for full solutions, credentials, API keys, or lesson approval shortcuts.
 
-If `OPENAI_API_KEY` is not configured, the backend returns a clear disabled-state message and no OpenAI request is made. To enable it in production, add `OPENAI_API_KEY` in Render's environment variables and redeploy the backend. `OPENAI_MODEL` is optional and defaults to `gpt-4.1-mini`.
+Gemini is the recommended first provider because it works from the existing Render backend and keeps the key off GitHub Pages. To enable it in production, add these backend-only Render environment variables and redeploy:
+
+```text
+AI_PROVIDER=gemini
+GEMINI_API_KEY=<your Google AI Studio API key>
+GEMINI_MODEL=gemini-3.1-flash-lite
+```
+
+Optional OpenAI fallback can be added later without changing frontend code:
+
+```text
+AI_FALLBACK_PROVIDER=openai
+OPENAI_API_KEY=<optional fallback key>
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+If the selected provider key is not configured, the backend returns a clear disabled-state message and no external AI request is made.
 
 ## Public AI assistant
 
@@ -214,9 +231,10 @@ POST /api/ai/public-chat
 
 This endpoint can answer general questions while using the current page context when the question is about Abqora, the official result link, percentage calculation, or college analysis. The frontend never stores or exposes an API key. To enable advanced answers publicly:
 
-1. Add `OPENAI_API_KEY` to the backend environment on Render.
-2. Optionally set `OPENAI_MODEL`; default is `gpt-4.1-mini`.
-3. Ensure the GitHub Pages build uses the deployed backend URL in `.github/workflows/pages.yml` as `NEXT_PUBLIC_API_BASE_URL`.
+1. Add `AI_PROVIDER=gemini` and `GEMINI_API_KEY` to the backend environment on Render.
+2. Optionally set `GEMINI_MODEL`; default is `gemini-3.1-flash-lite`.
+3. Optional later fallback: set `AI_FALLBACK_PROVIDER=openai`, `OPENAI_API_KEY`, and `OPENAI_MODEL`.
+4. Ensure the GitHub Pages build uses the deployed backend URL in `.github/workflows/pages.yml` as `NEXT_PUBLIC_API_BASE_URL`.
 
 If the backend AI provider is unavailable, the frontend keeps the chat UI available but shows a clear setup/connection message instead of pretending to answer broadly without AI.
 

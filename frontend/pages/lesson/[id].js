@@ -410,7 +410,7 @@ export default function LessonPage() {
 
                                     {aiUnavailable && (
                                         <div className="error-box compact-alert">
-                                            مساعد عبقورا غير مفعّل في الخادم بعد. أضف OPENAI_API_KEY في إعدادات backend ثم أعد النشر.
+                                            مساعد عبقورا غير مفعّل في الخادم بعد. اضبط AI_PROVIDER=gemini وأضف GEMINI_API_KEY في إعدادات backend ثم أعد النشر.
                                         </div>
                                     )}
                                     {aiError && <div className="error-box compact-alert">{aiError}</div>}

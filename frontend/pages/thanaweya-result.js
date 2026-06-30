@@ -361,15 +361,21 @@ ${rows}
                     icon: '✨',
                     title: 'مساعد عبقورا المتقدم',
                     text: data.message,
-                    source: data.model ? `advanced-ai:${data.model}` : 'advanced-ai',
+                    source: data.provider && data.model
+                        ? `advanced-ai:${data.provider}:${data.model}`
+                        : data.model
+                            ? `advanced-ai:${data.model}`
+                            : 'advanced-ai',
                 },
             ].slice(-12));
         } catch (error) {
             setAssistantMode('setup-needed');
             const assistantErrorMessage = error.code === 'AI_NOT_CONFIGURED'
-                ? 'أستطيع العمل كمساعد ذكي عام مثل ChatGPT، لكن يجب تفعيل OPENAI_API_KEY في Backend على Render أولًا. بعد التفعيل سأجيب على الأسئلة العامة وليس فقط بيانات الصفحة.'
+                ? 'أستطيع العمل كمساعد ذكي عام مثل ChatGPT، لكن يجب تفعيل Gemini في Backend على Render أولًا: AI_PROVIDER=gemini ثم GEMINI_API_KEY. بعد التفعيل سأجيب على الأسئلة العامة وليس فقط بيانات الصفحة.'
+                : error.code === 'AI_PROVIDER_NOT_SUPPORTED'
+                    ? 'إعداد AI_PROVIDER في Render غير مدعوم حالياً. استخدم gemini كخيار أساسي، أو openai كخيار بديل.'
                 : error.code === 'AI_PROVIDER_ERROR'
-                    ? 'الخادم متصل الآن بالمساعد، لكن مزود الذكاء الاصطناعي رفض الطلب. راجع OPENAI_API_KEY في Render، وتأكد من الرصيد/الفوترة، أو جرّب ضبط OPENAI_MODEL إلى نموذج متاح مثل gpt-4o-mini.'
+                    ? 'الخادم متصل الآن بالمساعد، لكن مزود الذكاء الاصطناعي رفض الطلب. راجع GEMINI_API_KEY أو OPENAI_API_KEY في Render، وتأكد من الحصة/الفوترة واسم النموذج مثل gemini-3.1-flash-lite.'
                     : 'أحاول الاتصال بالمساعد المتقدم، لكن Route الخادم غير متاح الآن. غالبًا يحتاج Backend في Render إلى Manual Deploy لآخر commit. بعد نشر الخادم سأستطيع الإجابة على أي سؤال.';
 
             setAssistantMessages((currentMessages) => [
@@ -381,6 +387,8 @@ ${rows}
                     text: assistantErrorMessage,
                     source: error.code === 'AI_NOT_CONFIGURED'
                         ? 'advanced-ai-not-configured'
+                        : error.code === 'AI_PROVIDER_NOT_SUPPORTED'
+                            ? 'advanced-ai-provider-error'
                         : error.code === 'AI_PROVIDER_ERROR'
                             ? 'advanced-ai-provider-error'
                             : 'ai-unavailable',
@@ -850,7 +858,7 @@ ${rows}
                                                     {message.source === 'advanced-ai-ready'
                                                         ? 'جاهز للمحادثة عند اتصال الخادم'
                                                         : message.source === 'advanced-ai-not-configured'
-                                                            ? 'المساعد المتقدم يحتاج تفعيل OPENAI_API_KEY'
+                                                            ? 'المساعد المتقدم يحتاج تفعيل GEMINI_API_KEY'
                                                             : message.source === 'advanced-ai-provider-error'
                                                                 ? 'مزود الذكاء الاصطناعي رفض الطلب'
                                                                 : message.source?.startsWith('advanced-ai')

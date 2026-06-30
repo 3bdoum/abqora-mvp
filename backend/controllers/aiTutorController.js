@@ -6,7 +6,9 @@ const { getLessonState } = require('../utils/progressAccess');
 const { cleanText, isObjectId } = require('../utils/validation');
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
-const DEFAULT_MODEL = 'gpt-4.1-mini';
+const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+const DEFAULT_OPENAI_MODEL = 'gpt-4.1-mini';
+const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite';
 
 const ageProfiles = {
     '5-8': {
@@ -49,6 +51,34 @@ const getResponseText = (payload) => {
         }
     }
     return textParts.join('\n').trim();
+};
+
+const getGeminiResponseText = (payload) => {
+    const textParts = [];
+    for (const candidate of payload?.candidates || []) {
+        for (const part of candidate?.content?.parts || []) {
+            if (typeof part?.text === 'string') textParts.push(part.text);
+        }
+    }
+    return textParts.join('\n').trim();
+};
+
+const getPrimaryAiProvider = () => (
+    process.env.AI_PROVIDER
+    || (process.env.GEMINI_API_KEY ? 'gemini' : 'openai')
+).trim().toLowerCase();
+
+const getProviderChain = () => {
+    const primary = getPrimaryAiProvider();
+    const fallback = (process.env.AI_FALLBACK_PROVIDER || '').trim().toLowerCase();
+    return [...new Set([primary, fallback].filter(Boolean))];
+};
+
+const getConfiguredModelLabel = () => {
+    const provider = getPrimaryAiProvider();
+    if (provider === 'gemini') return `gemini:${process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL}`;
+    if (provider === 'openai') return `openai:${process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL}`;
+    return provider || 'unknown';
 };
 
 const isDisallowedStudentPrompt = (message) => {
@@ -162,7 +192,7 @@ const callOpenAIResponses = async ({ systemPrompt, userPrompt, maxOutputTokens =
         throw error;
     }
 
-    const configuredModel = process.env.OPENAI_MODEL || DEFAULT_MODEL;
+    const configuredModel = process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL;
     const fallbackModel = process.env.OPENAI_FALLBACK_MODEL || 'gpt-4o-mini';
     const modelsToTry = [...new Set([configuredModel, fallbackModel].filter(Boolean))];
     let lastError;
@@ -187,6 +217,7 @@ const callOpenAIResponses = async ({ systemPrompt, userPrompt, maxOutputTokens =
         const payload = await response.json().catch(() => ({}));
         if (response.ok) {
             return {
+                provider: 'openai',
                 model,
                 text: getResponseText(payload),
             };
@@ -201,6 +232,89 @@ const callOpenAIResponses = async ({ systemPrompt, userPrompt, maxOutputTokens =
     }
 
     lastError.code = 'AI_PROVIDER_ERROR';
+    throw lastError;
+};
+
+const callGeminiGenerateContent = async ({ systemPrompt, userPrompt, maxOutputTokens = 450 }) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        const error = new Error('GEMINI_API_KEY is not configured');
+        error.code = 'AI_NOT_CONFIGURED';
+        error.provider = 'gemini';
+        throw error;
+    }
+
+    const model = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+    const modelPath = model.startsWith('models/') ? model : `models/${model}`;
+    const encodedModelPath = modelPath.split('/').map(encodeURIComponent).join('/');
+    const response = await fetch(`${GEMINI_API_BASE_URL}/${encodedModelPath}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            systemInstruction: {
+                parts: [{ text: systemPrompt }],
+            },
+            contents: [{
+                role: 'user',
+                parts: [{ text: userPrompt }],
+            }],
+            generationConfig: {
+                maxOutputTokens,
+            },
+        }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok) {
+        return {
+            provider: 'gemini',
+            model,
+            text: getGeminiResponseText(payload),
+        };
+    }
+
+    const error = new Error(payload?.error?.message || 'Gemini request failed');
+    error.code = 'AI_PROVIDER_ERROR';
+    error.status = response.status;
+    error.provider = 'gemini';
+    error.providerType = payload?.error?.status || payload?.error?.code;
+    error.model = model;
+    throw error;
+};
+
+const callAiProvider = async (provider, args) => {
+    if (provider === 'gemini') return callGeminiGenerateContent(args);
+    if (provider === 'openai') return callOpenAIResponses(args);
+
+    const error = new Error(`Unsupported AI_PROVIDER: ${provider}`);
+    error.code = 'AI_PROVIDER_NOT_SUPPORTED';
+    error.provider = provider;
+    throw error;
+};
+
+const callConfiguredAiProvider = async (args) => {
+    const providersToTry = getProviderChain();
+    let lastError;
+    let firstConfiguredProviderError;
+
+    for (const provider of providersToTry) {
+        try {
+            return await callAiProvider(provider, args);
+        } catch (error) {
+            lastError = error;
+            lastError.providersTried = providersToTry;
+            if (error.code === 'AI_PROVIDER_NOT_SUPPORTED') break;
+            if (error.code !== 'AI_NOT_CONFIGURED' && !firstConfiguredProviderError) {
+                firstConfiguredProviderError = error;
+            }
+            if (provider === providersToTry[providersToTry.length - 1]) break;
+        }
+    }
+
+    if (lastError?.code === 'AI_NOT_CONFIGURED' && firstConfiguredProviderError) {
+        throw firstConfiguredProviderError;
+    }
+
     throw lastError;
 };
 
@@ -262,7 +376,7 @@ ${message}
 
         let aiResult;
         try {
-            aiResult = await callOpenAIResponses({
+            aiResult = await callConfiguredAiProvider({
                 systemPrompt,
                 userPrompt,
                 maxOutputTokens: Number(process.env.PUBLIC_AI_MAX_TOKENS) || 900,
@@ -271,17 +385,26 @@ ${message}
             if (error.code === 'AI_NOT_CONFIGURED') {
                 return res.status(503).json({
                     code: 'AI_NOT_CONFIGURED',
-                    message: 'المساعد المتقدم غير مفعّل بعد. أضف OPENAI_API_KEY في إعدادات الخادم.',
+                    message: 'المساعد المتقدم غير مفعّل بعد. اضبط AI_PROVIDER=gemini وأضف GEMINI_API_KEY في إعدادات الخادم.',
+                });
+            }
+            if (error.code === 'AI_PROVIDER_NOT_SUPPORTED') {
+                return res.status(503).json({
+                    code: 'AI_PROVIDER_NOT_SUPPORTED',
+                    message: 'مزود الذكاء الاصطناعي غير مدعوم. استخدم AI_PROVIDER=gemini أو AI_PROVIDER=openai.',
                 });
             }
             console.error('Public AI provider error:', {
                 status: error.status,
+                provider: error.provider,
                 type: error.providerType,
+                model: error.model,
+                providersTried: error.providersTried,
                 message: error.message,
             });
             return res.status(502).json({
                 code: 'AI_PROVIDER_ERROR',
-                message: 'المساعد المتقدم متصل بالخادم، لكن مزود الذكاء الاصطناعي رفض الطلب. تحقق من OPENAI_API_KEY أو الرصيد أو اسم النموذج.',
+                message: 'المساعد المتقدم متصل بالخادم، لكن مزود الذكاء الاصطناعي رفض الطلب. تحقق من GEMINI_API_KEY أو OPENAI_API_KEY أو الحصة أو اسم النموذج.',
             });
         }
 
@@ -292,6 +415,7 @@ ${message}
             message: assistantMessage,
             status: 'answered',
             model: aiResult.model,
+            provider: aiResult.provider,
         });
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -344,12 +468,18 @@ const chatWithTutor = async (req, res) => {
 
         let aiResult;
         try {
-            aiResult = await callOpenAIResponses({ systemPrompt, userPrompt });
+            aiResult = await callConfiguredAiProvider({ systemPrompt, userPrompt });
         } catch (error) {
             if (error.code === 'AI_NOT_CONFIGURED') {
                 return res.status(503).json({
                     code: 'AI_NOT_CONFIGURED',
-                    message: 'مساعد عبقورا الذكي غير مفعّل بعد. أضف OPENAI_API_KEY في إعدادات الخادم.',
+                    message: 'مساعد عبقورا الذكي غير مفعّل بعد. اضبط AI_PROVIDER=gemini وأضف GEMINI_API_KEY في إعدادات الخادم.',
+                });
+            }
+            if (error.code === 'AI_PROVIDER_NOT_SUPPORTED') {
+                return res.status(503).json({
+                    code: 'AI_PROVIDER_NOT_SUPPORTED',
+                    message: 'مزود الذكاء الاصطناعي غير مدعوم. استخدم AI_PROVIDER=gemini أو AI_PROVIDER=openai.',
                 });
             }
             await AiTutorExchange.create({
@@ -359,7 +489,7 @@ const chatWithTutor = async (req, res) => {
                 lessonState,
                 userMessage: message,
                 assistantMessage: '',
-                model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
+                model: getConfiguredModelLabel(),
                 status: 'error',
                 safetyFlags: [{ type: 'provider_error', message: cleanText(error.message, 300) }],
             });
@@ -376,7 +506,7 @@ const chatWithTutor = async (req, res) => {
             lessonState,
             userMessage: message,
             assistantMessage,
-            model: aiResult.model,
+            model: aiResult.provider ? `${aiResult.provider}:${aiResult.model}` : aiResult.model,
             status: 'answered',
         });
 

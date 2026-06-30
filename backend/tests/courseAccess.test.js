@@ -330,9 +330,11 @@ test('student cannot use AI tutor for a locked lesson', async () => {
     assert.equal(response.status, 403);
 });
 
-test('AI tutor reports configuration issue when OpenAI key is missing', async () => {
+test('AI tutor reports configuration issue when OpenAI is selected and key is missing', async () => {
     const data = await setupScenario();
+    const previousProvider = process.env.AI_PROVIDER;
     const previousApiKey = process.env.OPENAI_API_KEY;
+    process.env.AI_PROVIDER = 'openai';
     delete process.env.OPENAI_API_KEY;
 
     try {
@@ -344,12 +346,37 @@ test('AI tutor reports configuration issue when OpenAI key is missing', async ()
         assert.equal(response.status, 503);
         assert.equal(response.body.code, 'AI_NOT_CONFIGURED');
     } finally {
+        if (previousProvider) process.env.AI_PROVIDER = previousProvider;
+        else delete process.env.AI_PROVIDER;
         if (previousApiKey) process.env.OPENAI_API_KEY = previousApiKey;
     }
 });
 
-test('public AI assistant reports configuration issue when OpenAI key is missing', async () => {
+test('public AI assistant reports configuration issue when Gemini is selected and key is missing', async () => {
+    const previousProvider = process.env.AI_PROVIDER;
+    const previousGeminiKey = process.env.GEMINI_API_KEY;
+    process.env.AI_PROVIDER = 'gemini';
+    delete process.env.GEMINI_API_KEY;
+
+    try {
+        const response = await request(app)
+            .post('/api/ai/public-chat')
+            .send({ message: 'ما هي منصة عبقورا؟' });
+
+        assert.equal(response.status, 503);
+        assert.equal(response.body.code, 'AI_NOT_CONFIGURED');
+    } finally {
+        if (previousProvider) process.env.AI_PROVIDER = previousProvider;
+        else delete process.env.AI_PROVIDER;
+        if (previousGeminiKey) process.env.GEMINI_API_KEY = previousGeminiKey;
+        else delete process.env.GEMINI_API_KEY;
+    }
+});
+
+test('public AI assistant reports configuration issue when OpenAI is selected and key is missing', async () => {
+    const previousProvider = process.env.AI_PROVIDER;
     const previousApiKey = process.env.OPENAI_API_KEY;
+    process.env.AI_PROVIDER = 'openai';
     delete process.env.OPENAI_API_KEY;
 
     try {
@@ -360,13 +387,73 @@ test('public AI assistant reports configuration issue when OpenAI key is missing
         assert.equal(response.status, 503);
         assert.equal(response.body.code, 'AI_NOT_CONFIGURED');
     } finally {
+        if (previousProvider) process.env.AI_PROVIDER = previousProvider;
+        else delete process.env.AI_PROVIDER;
         if (previousApiKey) process.env.OPENAI_API_KEY = previousApiKey;
     }
 });
 
+test('public AI assistant answers general questions through Gemini provider', async () => {
+    const previousProvider = process.env.AI_PROVIDER;
+    const previousGeminiKey = process.env.GEMINI_API_KEY;
+    const previousGeminiModel = process.env.GEMINI_MODEL;
+    const previousPublicMaxTokens = process.env.PUBLIC_AI_MAX_TOKENS;
+    const previousFetch = global.fetch;
+    process.env.AI_PROVIDER = 'gemini';
+    process.env.GEMINI_API_KEY = 'test-gemini-key';
+    process.env.GEMINI_MODEL = 'gemini-3.1-flash-lite';
+    delete process.env.PUBLIC_AI_MAX_TOKENS;
+    global.fetch = async (url, options) => {
+        assert.match(url, /^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-3\.1-flash-lite:generateContent\?key=test-gemini-key$/);
+        const body = JSON.parse(options.body);
+        assert.match(body.systemInstruction.parts[0].text, /مساعد عبقورا الذكي/);
+        assert.match(body.systemInstruction.parts[0].text, /أجب عن أسئلة المستخدم العامة/);
+        assert.match(body.contents[0].parts[0].text, /ما هي أفضل طريقة للمذاكرة/);
+        assert.equal(body.generationConfig.maxOutputTokens, 900);
+        return {
+            ok: true,
+            json: async () => ({
+                candidates: [{
+                    content: {
+                        parts: [{ text: 'ابدأ بخطة Gemini قصيرة: حدد مادة واحدة، ذاكر 25 دقيقة، ثم راجع بأسئلة بسيطة.' }],
+                    },
+                }],
+            }),
+        };
+    };
+
+    try {
+        const response = await request(app)
+            .post('/api/ai/public-chat')
+            .send({
+                message: 'ما هي أفضل طريقة للمذاكرة؟',
+                pageContext: 'النسبة الحالية: 82%',
+                history: [{ role: 'user', text: 'مرحبا' }],
+            });
+
+        assert.equal(response.status, 200);
+        assert.equal(response.body.status, 'answered');
+        assert.equal(response.body.provider, 'gemini');
+        assert.equal(response.body.model, 'gemini-3.1-flash-lite');
+        assert.match(response.body.message, /Gemini قصيرة/);
+    } finally {
+        if (previousProvider) process.env.AI_PROVIDER = previousProvider;
+        else delete process.env.AI_PROVIDER;
+        if (previousGeminiKey) process.env.GEMINI_API_KEY = previousGeminiKey;
+        else delete process.env.GEMINI_API_KEY;
+        if (previousGeminiModel) process.env.GEMINI_MODEL = previousGeminiModel;
+        else delete process.env.GEMINI_MODEL;
+        if (previousPublicMaxTokens) process.env.PUBLIC_AI_MAX_TOKENS = previousPublicMaxTokens;
+        else delete process.env.PUBLIC_AI_MAX_TOKENS;
+        global.fetch = previousFetch;
+    }
+});
+
 test('public AI assistant answers general questions through OpenAI provider', async () => {
+    const previousProvider = process.env.AI_PROVIDER;
     const previousApiKey = process.env.OPENAI_API_KEY;
     const previousFetch = global.fetch;
+    process.env.AI_PROVIDER = 'openai';
     process.env.OPENAI_API_KEY = 'test-openai-key';
     global.fetch = async (url, options) => {
         assert.equal(url, 'https://api.openai.com/v1/responses');
@@ -392,8 +479,11 @@ test('public AI assistant answers general questions through OpenAI provider', as
 
         assert.equal(response.status, 200);
         assert.equal(response.body.status, 'answered');
+        assert.equal(response.body.provider, 'openai');
         assert.match(response.body.message, /خطة قصيرة/);
     } finally {
+        if (previousProvider) process.env.AI_PROVIDER = previousProvider;
+        else delete process.env.AI_PROVIDER;
         if (previousApiKey) {
             process.env.OPENAI_API_KEY = previousApiKey;
         } else {
@@ -405,8 +495,10 @@ test('public AI assistant answers general questions through OpenAI provider', as
 
 test('AI tutor answers available lessons and stores the exchange', async () => {
     const data = await setupScenario();
+    const previousProvider = process.env.AI_PROVIDER;
     const previousApiKey = process.env.OPENAI_API_KEY;
     const previousFetch = global.fetch;
+    process.env.AI_PROVIDER = 'openai';
     process.env.OPENAI_API_KEY = 'test-openai-key';
     global.fetch = async (url, options) => {
         assert.equal(url, 'https://api.openai.com/v1/responses');
@@ -434,6 +526,8 @@ test('AI tutor answers available lessons and stores the exchange', async () => {
         assert.equal(exchanges.length, 1);
         assert.equal(exchanges[0].status, 'answered');
     } finally {
+        if (previousProvider) process.env.AI_PROVIDER = previousProvider;
+        else delete process.env.AI_PROVIDER;
         if (previousApiKey) {
             process.env.OPENAI_API_KEY = previousApiKey;
         } else {
