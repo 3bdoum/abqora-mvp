@@ -1,8 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap');
 
 :root {
     color-scheme: light;
     font-family: 'Cairo', sans-serif;
+    --font-arabic: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --primary: #4f46e5;
     --primary-hover: #4338ca;
     --primary-light: #e0e7ff;
@@ -38,6 +39,10 @@ html, body {
     color: var(--text);
     min-height: 100vh;
     scroll-behavior: smooth;
+    font-family: var(--font-arabic);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -2678,6 +2683,15 @@ input:focus, select:focus, textarea:focus {
     color: var(--primary);
 }
 
+.result-floating-header-simple {
+    max-width: 1180px;
+}
+
+.result-floating-header-simple .result-floating-links a {
+    color: #475569;
+    font-weight: 900;
+}
+
 #result-top,
 #result-videos,
 #result-game,
@@ -3516,9 +3530,47 @@ input:focus, select:focus, textarea:focus {
     min-height: 0;
 }
 
+.result-simple-hero {
+    grid-template-columns: minmax(460px, 0.9fr) minmax(390px, 0.82fr);
+}
+
+.result-simple-hero .eyebrow {
+    padding: 7px 12px;
+    border: 1px solid rgba(79, 70, 229, 0.14);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.72);
+    color: var(--primary);
+    font-size: 0.82rem;
+    font-weight: 900;
+    letter-spacing: 0;
+}
+
+.result-simple-hero h1 {
+    max-width: 760px;
+    font-size: clamp(2.35rem, 5vw, 4.35rem);
+    font-weight: 900;
+    letter-spacing: -0.035em;
+}
+
+.result-simple-hero .result-hero-copy > p {
+    max-width: 680px;
+    color: #334155;
+    font-size: clamp(1rem, 1.7vw, 1.16rem);
+    font-weight: 700;
+    line-height: 1.95;
+}
+
 .result-simple-actions {
     justify-content: flex-start;
     margin-top: 20px;
+}
+
+.result-simple-actions .button,
+.result-simple-actions .small-button {
+    min-height: 48px;
+    padding-inline: 18px;
+    font-size: 0.94rem;
+    font-weight: 900;
 }
 
 .result-source-note {
@@ -3526,6 +3578,103 @@ input:focus, select:focus, textarea:focus {
     color: var(--text-muted);
     font-size: 0.86rem;
     font-weight: 850;
+}
+
+.result-main-services {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 14px 0 16px;
+}
+
+.result-service-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 6px 12px;
+    align-items: start;
+    min-height: 146px;
+    padding: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(79, 70, 229, 0.14);
+    border-radius: 26px;
+    background:
+        radial-gradient(circle at 8% 10%, rgba(79, 70, 229, 0.11), transparent 34%),
+        rgba(255,255,255,0.9);
+    color: var(--text);
+    text-decoration: none;
+    box-shadow: var(--shadow-sm);
+    animation: resultCardLiftIn 0.62s ease both;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.result-service-card:nth-child(2) {
+    animation-delay: 0.07s;
+}
+
+.result-service-card:nth-child(3) {
+    animation-delay: 0.14s;
+}
+
+.result-service-card::after {
+    content: '';
+    position: absolute;
+    inset: auto 18px -50px 18px;
+    height: 80px;
+    border-radius: 999px;
+    background: rgba(6, 182, 212, 0.13);
+    filter: blur(26px);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+}
+
+.result-service-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(79, 70, 229, 0.3);
+    box-shadow: 0 24px 55px rgba(15, 23, 42, 0.12);
+}
+
+.result-service-card:hover::after {
+    opacity: 1;
+}
+
+.result-service-icon {
+    grid-row: 1 / span 3;
+    width: 50px;
+    height: 50px;
+    display: grid;
+    place-items: center;
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--primary-light), #ecfeff);
+    color: var(--primary);
+    font-size: 1.35rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.result-service-card strong {
+    font-size: 1.08rem;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+}
+
+.result-service-card p {
+    margin-bottom: 0;
+    color: #475569;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.75;
+}
+
+.result-service-card small {
+    display: inline-flex;
+    width: fit-content;
+    margin-top: 4px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 0.76rem;
+    font-weight: 900;
 }
 
 .result-core-workspace {
@@ -5775,6 +5924,7 @@ input:focus, select:focus, textarea:focus {
     .result-dynamic-hero,
     .result-grid,
     .result-quick-stats,
+    .result-main-services,
     .result-game-section,
     .result-analysis-grid,
     .result-featured-video .result-video-card-featured,
@@ -5884,6 +6034,10 @@ input:focus, select:focus, textarea:focus {
 
     .result-video-grid {
         grid-template-columns: 1fr;
+    }
+
+    .result-main-services {
+        gap: 10px;
     }
 
     .result-featured-video .result-video-frame {
@@ -6053,10 +6207,34 @@ input:focus, select:focus, textarea:focus {
         overflow: visible;
     }
 
+    .result-floating-header-simple .result-floating-links {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .result-floating-links a {
         text-align: center;
         font-size: 0.72rem;
         padding-inline: 6px;
+    }
+
+    .result-simple-hero h1 {
+        font-size: 2.25rem;
+        letter-spacing: -0.02em;
+    }
+
+    .result-simple-hero .result-hero-copy > p {
+        font-size: 0.96rem;
+        line-height: 1.85;
+    }
+
+    .result-main-services {
+        grid-template-columns: 1fr;
+    }
+
+    .result-service-card {
+        min-height: auto;
+        padding: 15px;
+        border-radius: 22px;
     }
 
     .result-floating-shape,
@@ -6275,6 +6453,7 @@ input:focus, select:focus, textarea:focus {
     .result-calculator-card.dynamic,
     .result-action-strip,
     .result-help-tile,
+    .result-service-card,
     .result-analysis-section,
     .result-college-card,
     .result-source-links a,
@@ -6298,6 +6477,7 @@ input:focus, select:focus, textarea:focus {
     .result-calculator-card.dynamic:hover,
     .result-help-tile:hover,
     .result-help-tile.active,
+    .result-service-card:hover,
     .result-hero-game-cta:hover,
     .result-game-card:hover,
     .result-game-card.done,

@@ -37,6 +37,31 @@ const featuredVideo = {
     icon: '🧠',
 };
 
+const mainServices = [
+    {
+        icon: '🔗',
+        title: 'الرابط الرسمي',
+        description: 'اذهب مباشرة إلى موقع النتيجة بدون إدخال بيانات داخل عبقورا.',
+        href: officialResultUrl,
+        external: true,
+        action: 'فتح النتيجة',
+    },
+    {
+        icon: '🧮',
+        title: 'حاسبة النسبة',
+        description: 'اختر النظام الجديد أو القديم واحسب النسبة داخل جهازك فقط.',
+        href: '#result-calculator',
+        action: 'احسب الآن',
+    },
+    {
+        icon: '📊',
+        title: 'تحليل الكليات',
+        description: 'قارن نتيجتك بآخر عامين من بيانات التنسيق الرسمية.',
+        href: '#result-analysis',
+        action: 'شاهد التحليل',
+    },
+];
+
 const admissionTracks = [
     {
         id: 'science',
@@ -239,13 +264,12 @@ export default function ThanaweyaResultPage() {
                 <nav className="result-floating-header result-floating-header-simple" aria-label="تنقل سريع داخل صفحة النتيجة">
                     <Link href="/" className="result-floating-brand">عبقورا</Link>
                     <div className="result-floating-links">
+                        <a href={officialResultUrl} target="_blank" rel="noopener noreferrer">الرابط الرسمي</a>
                         <a href="#result-calculator">الحاسبة</a>
                         <a href="#result-analysis">تحليل الكليات</a>
-                        <a href="#result-video">فيديو واحد</a>
-                        <a href="#result-plan">الخطوة التالية</a>
                     </div>
                     <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="small-button">
-                        الرابط الرسمي
+                        ابدأ الآن
                     </a>
                 </nav>
 
@@ -257,10 +281,10 @@ export default function ThanaweyaResultPage() {
                     <div className="result-floating-shape shape-three" aria-hidden="true">توقع</div>
 
                     <div className="result-hero-copy">
-                        <span className="eyebrow">نسخة مبسطة للطلاب</span>
-                        <h1>نتيجتك رقم… والخطة أهم</h1>
+                        <span className="eyebrow">خدمة نتيجة الثانوية العامة</span>
+                        <h1>الرابط، النسبة، وتوقع الكلية في مكان واحد</h1>
                         <p>
-                            افتح النتيجة من المصدر الرسمي، احسب النسبة حسب النظام الصحيح، ثم شاهد تحليلًا إرشاديًا للكليات بناءً على آخر عامين.
+                            صفحة مركّزة للطالب: افتح النتيجة من المصدر الرسمي، احسب النسبة بالنظام الصحيح، ثم افهم أقرب مسارات الكليات من بيانات التنسيق.
                         </p>
 
                         <div className="hero-actions result-simple-actions">
@@ -322,6 +346,23 @@ export default function ThanaweyaResultPage() {
                         <span>ابدأ هنا</span>
                         <b aria-hidden="true">↓</b>
                     </a>
+                </section>
+
+                <section className="result-main-services" aria-label="الخدمات الأساسية">
+                    {mainServices.map((service) => (
+                        <a
+                            key={service.title}
+                            href={service.href}
+                            target={service.external ? '_blank' : undefined}
+                            rel={service.external ? 'noopener noreferrer' : undefined}
+                            className="result-service-card"
+                        >
+                            <span className="result-service-icon" aria-hidden="true">{service.icon}</span>
+                            <strong>{service.title}</strong>
+                            <p>{service.description}</p>
+                            <small>{service.action}</small>
+                        </a>
+                    ))}
                 </section>
 
                 <section className="result-workspace result-core-workspace">
