@@ -366,16 +366,24 @@ ${rows}
             ].slice(-12));
         } catch (error) {
             setAssistantMode('setup-needed');
+            const assistantErrorMessage = error.code === 'AI_NOT_CONFIGURED'
+                ? 'أستطيع العمل كمساعد ذكي عام مثل ChatGPT، لكن يجب تفعيل OPENAI_API_KEY في Backend على Render أولًا. بعد التفعيل سأجيب على الأسئلة العامة وليس فقط بيانات الصفحة.'
+                : error.code === 'AI_PROVIDER_ERROR'
+                    ? 'الخادم متصل الآن بالمساعد، لكن مزود الذكاء الاصطناعي رفض الطلب. راجع OPENAI_API_KEY في Render، وتأكد من الرصيد/الفوترة، أو جرّب ضبط OPENAI_MODEL إلى نموذج متاح مثل gpt-4o-mini.'
+                    : 'أحاول الاتصال بالمساعد المتقدم، لكن Route الخادم غير متاح الآن. غالبًا يحتاج Backend في Render إلى Manual Deploy لآخر commit. بعد نشر الخادم سأستطيع الإجابة على أي سؤال.';
+
             setAssistantMessages((currentMessages) => [
                 ...currentMessages,
                 {
                     role: 'assistant',
                     icon: '🔌',
                     title: 'المساعد المتقدم يحتاج اتصالًا بالخادم',
-                    text: error.code === 'AI_NOT_CONFIGURED'
-                        ? 'أستطيع العمل كمساعد ذكي عام مثل ChatGPT، لكن يجب تفعيل OPENAI_API_KEY في Backend على Render أولًا. بعد التفعيل سأجيب على الأسئلة العامة وليس فقط بيانات الصفحة.'
-                        : 'أحاول الاتصال بالمساعد المتقدم، لكن Route الخادم غير متاح الآن. غالبًا يحتاج Backend في Render إلى Manual Deploy لآخر commit. بعد نشر الخادم سأستطيع الإجابة على أي سؤال.',
-                    source: error.code === 'AI_NOT_CONFIGURED' ? 'advanced-ai-not-configured' : 'ai-unavailable',
+                    text: assistantErrorMessage,
+                    source: error.code === 'AI_NOT_CONFIGURED'
+                        ? 'advanced-ai-not-configured'
+                        : error.code === 'AI_PROVIDER_ERROR'
+                            ? 'advanced-ai-provider-error'
+                            : 'ai-unavailable',
                     actionLabel: 'راسل الدعم',
                     actionHref: supportMailHref,
                 },
@@ -839,15 +847,17 @@ ${rows}
                                             <p>{message.text}</p>
                                             {message.source ? (
                                                 <small>
-                                                    {message.source?.startsWith('advanced-ai')
-                                                        ? message.source === 'advanced-ai-ready'
-                                                            ? 'جاهز للمحادثة عند اتصال الخادم'
-                                                            : 'إجابة من المساعد المتقدم'
+                                                    {message.source === 'advanced-ai-ready'
+                                                        ? 'جاهز للمحادثة عند اتصال الخادم'
                                                         : message.source === 'advanced-ai-not-configured'
                                                             ? 'المساعد المتقدم يحتاج تفعيل OPENAI_API_KEY'
-                                                            : message.source === 'ai-unavailable'
-                                                                ? 'المساعد المتقدم غير متصل الآن'
-                                                                : 'حالة المساعد'}
+                                                            : message.source === 'advanced-ai-provider-error'
+                                                                ? 'مزود الذكاء الاصطناعي رفض الطلب'
+                                                                : message.source?.startsWith('advanced-ai')
+                                                                    ? 'إجابة من المساعد المتقدم'
+                                                                    : message.source === 'ai-unavailable'
+                                                                        ? 'المساعد المتقدم غير متصل الآن'
+                                                                        : 'حالة المساعد'}
                                                 </small>
                                             ) : null}
                                             {message.actionHref ? (

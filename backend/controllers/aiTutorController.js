@@ -162,34 +162,46 @@ const callOpenAIResponses = async ({ systemPrompt, userPrompt, maxOutputTokens =
         throw error;
     }
 
-    const model = process.env.OPENAI_MODEL || DEFAULT_MODEL;
-    const response = await fetch(OPENAI_RESPONSES_URL, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            model,
-            input: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-            ],
-            max_output_tokens: maxOutputTokens,
-        }),
-    });
+    const configuredModel = process.env.OPENAI_MODEL || DEFAULT_MODEL;
+    const fallbackModel = process.env.OPENAI_FALLBACK_MODEL || 'gpt-4o-mini';
+    const modelsToTry = [...new Set([configuredModel, fallbackModel].filter(Boolean))];
+    let lastError;
 
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
+    for (const model of modelsToTry) {
+        const response = await fetch(OPENAI_RESPONSES_URL, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model,
+                input: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt },
+                ],
+                max_output_tokens: maxOutputTokens,
+            }),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (response.ok) {
+            return {
+                model,
+                text: getResponseText(payload),
+            };
+        }
+
         const error = new Error(payload?.error?.message || 'OpenAI request failed');
         error.status = response.status;
-        throw error;
+        error.providerType = payload?.error?.type;
+        lastError = error;
+
+        if ([401, 403, 429].includes(response.status)) break;
     }
 
-    return {
-        model,
-        text: getResponseText(payload),
-    };
+    lastError.code = 'AI_PROVIDER_ERROR';
+    throw lastError;
 };
 
 const buildPublicAssistantSystemPrompt = ({ pageContext }) => `
@@ -262,7 +274,15 @@ ${message}
                     message: 'المساعد المتقدم غير مفعّل بعد. أضف OPENAI_API_KEY في إعدادات الخادم.',
                 });
             }
-            return res.status(502).json({ message: 'تعذر تشغيل المساعد المتقدم الآن. حاول لاحقاً.' });
+            console.error('Public AI provider error:', {
+                status: error.status,
+                type: error.providerType,
+                message: error.message,
+            });
+            return res.status(502).json({
+                code: 'AI_PROVIDER_ERROR',
+                message: 'المساعد المتقدم متصل بالخادم، لكن مزود الذكاء الاصطناعي رفض الطلب. تحقق من OPENAI_API_KEY أو الرصيد أو اسم النموذج.',
+            });
         }
 
         const assistantMessage = cleanText(aiResult.text, 2400)
