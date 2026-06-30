@@ -1,148 +1,140 @@
 import { useMemo, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { withBasePath } from '../utils/paths';
 
 const officialResultUrl = 'https://g12.emis.gov.eg/';
 const ministryUrl = 'https://moe.gov.eg/';
+const tansikUrl = 'https://tansik.digital.gov.eg/application/';
+const scientificCutoffs2025Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitE2025.htm';
+const literaryCutoffs2025Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitA2025.htm';
+const scientificCutoffs2024Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitE2024.htm';
+const literaryCutoffs2024Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitA2024.htm';
 
-const journeyModes = [
+const degreeSystems = [
     {
-        id: 'official',
-        icon: '🔗',
-        label: 'أريد الرابط',
-        title: 'افتح النتيجة من المصدر الرسمي فقط',
-        description: 'اضغط على الرابط الرسمي، ثم أدخل رقم الجلوس داخل موقع الوزارة فقط. عبقورا لا يطلب رقم الجلوس ولا يخزنه.',
-        actionLabel: 'فتح موقع النتيجة الرسمي',
-        actionHref: officialResultUrl,
-        checklist: ['تأكد أن الرابط ينتهي بـ emis.gov.eg', 'لا تدخل رقم الجلوس في صفحات مجهولة', 'راجع الاسم قبل مشاركة أي صورة'],
+        id: 'new',
+        label: 'النظام الجديد',
+        total: 320,
+        badge: '2025 / 2026',
+        note: 'الاختيار الافتراضي لأن امتحانات 2025 / 2026 تشمل نظامًا جديدًا.',
     },
     {
-        id: 'safe',
-        icon: '🛡️',
-        label: 'أريد الأمان',
-        title: 'احمِ بيانات الطالب وقت الزحمة',
-        description: 'وقت ظهور النتيجة تنتشر روابط كثيرة. القاعدة الذهبية: رقم الجلوس لا يُكتب إلا في الموقع الرسمي.',
-        actionLabel: 'فتح موقع الوزارة',
-        actionHref: ministryUrl,
-        checklist: ['لا ترسل رقم الجلوس في التعليقات', 'لا تنشر صورة النتيجة كاملة', 'لا تثق بصفحات تطلب بيانات إضافية'],
-    },
-    {
-        id: 'calculator',
-        icon: '🧮',
-        label: 'أحسب النسبة',
-        title: 'احسب النسبة بسرعة وبدون حفظ بيانات',
-        description: 'اكتب المجموع والمجموع الكلي فقط. الحاسبة تعمل داخل الصفحة ولا ترسل أي بيانات للخادم.',
-        actionLabel: 'اذهب للحاسبة',
-        actionHref: '#result-calculator',
-        checklist: ['اكتب المجموع بعد التأكد منه', 'استخدم 410 كمجموع كلي إذا كان مناسبًا لنظامك', 'اعتبر النسبة تقديرية للمساعدة فقط'],
-    },
-    {
-        id: 'next',
-        icon: '🎯',
-        label: 'ماذا بعد؟',
-        title: 'حوّل القلق إلى خطة صغيرة',
-        description: 'بعد ظهور النتيجة، لا تبدأ بعشرات الاختيارات. ابدأ بثلاث قوائم: رغبات، بدائل، ومهارات تحتاج تقويتها.',
-        actionLabel: 'تعرف على عبقورا',
-        actionHref: '/',
-        checklist: ['اكتب 5 رغبات أساسية', 'اكتب 5 بدائل واقعية', 'اختر مهارة واحدة تبدأ بها هذا الأسبوع'],
+        id: 'old',
+        label: 'النظام القديم',
+        total: 410,
+        badge: 'للطلاب القدامى',
+        note: 'متاح فقط للطلاب الذين يطبق عليهم النظام القديم.',
     },
 ];
 
-const quickStats = [
-    ['رسمي', 'روابط وزارة التربية والتعليم'],
-    ['آمن', 'لا نطلب رقم الجلوس'],
-    ['سريع', 'حاسبة نسبة داخل الصفحة'],
+const featuredVideo = {
+    title: 'تطوير المهارات بالعربي',
+    description: 'فيديو عربي مناسب لطلاب الثانوية: يساعد الطالب يفكر في بناء نفسه بعد النتيجة بدل التوقف عند رقم واحد.',
+    duration: 'فيديو مهارات',
+    youtubeId: '5MTAMo0k67k',
+    sourceLabel: 'ياسر الحزيمي · YouTube',
+    mood: 'مهارات',
+    icon: '🧠',
+};
+
+const admissionTracks = [
+    {
+        id: 'science',
+        label: 'علمي علوم',
+        helper: 'مناسب للطب، الأسنان، الصيدلة، العلاج الطبيعي، والعلوم الصحية.',
+        source2024: scientificCutoffs2024Url,
+        source2025: scientificCutoffs2025Url,
+        colleges: [
+            { name: 'طب', y2024: 93.17, y2025: 93.12, action: 'احتفظ ببدائل طبية قريبة مثل علاج طبيعي وصيدلة.' },
+            { name: 'أسنان', y2024: 92.8, y2025: 92.66, action: 'قارن المحافظات ولا تعتمد على كلية واحدة فقط.' },
+            { name: 'علاج طبيعي', y2024: 92.2, y2025: 92.03, action: 'بديل قوي لمن يريد مسارًا صحيًا تطبيقيًا.' },
+            { name: 'صيدلة', y2024: 91.71, y2025: 91.88, action: 'اسأل عن فرص التدريب وسوق العمل قبل ترتيب الرغبات.' },
+            { name: 'تمريض', y2024: 84.27, y2025: 85.31, action: 'اختيار عملي مع طلب واضح في سوق الرعاية الصحية.' },
+        ],
+    },
+    {
+        id: 'math',
+        label: 'علمي رياضة',
+        helper: 'مناسب للهندسة، الحاسبات، الذكاء الاصطناعي، والفنون التطبيقية.',
+        source2024: scientificCutoffs2024Url,
+        source2025: scientificCutoffs2025Url,
+        colleges: [
+            { name: 'هندسة', y2024: 88.66, y2025: 89.84, action: 'قارن بين هندسة وحاسبات حسب ميولك وليس الاسم فقط.' },
+            { name: 'حاسبات ومعلومات', y2024: 83.41, y2025: 84.22, action: 'ابدأ فورًا ببرمجة ومشروعات صغيرة حتى قبل التنسيق.' },
+            { name: 'ذكاء اصطناعي', y2024: 84.15, y2025: 85.0, action: 'جهّز أساسيات Python والرياضيات العملية.' },
+            { name: 'فنون تطبيقية', y2024: 76.1, y2025: 70.47, action: 'اختيار جيد لمن يجمع بين التصميم والتقنية.' },
+            { name: 'تمريض/بدائل علمية', y2024: 84.27, y2025: 85.31, action: 'لو المجموع قريب من العلوم الصحية، قارنها بالمسارات التقنية.' },
+        ],
+    },
+    {
+        id: 'literature',
+        label: 'أدبي',
+        helper: 'مناسب للاقتصاد والعلوم السياسية، الألسن، الإعلام، الآثار، والتجارة.',
+        source2024: literaryCutoffs2024Url,
+        source2025: literaryCutoffs2025Url,
+        colleges: [
+            { name: 'اقتصاد وعلوم سياسية', y2024: 85.24, y2025: 89.84, action: 'قوّي اللغة الإنجليزية والتحليل السياسي والاقتصادي.' },
+            { name: 'ألسن', y2024: 84.27, y2025: 87.66, action: 'ابدأ لغة ثانية مبكرًا، فاللغة مهارة سوق حقيقية.' },
+            { name: 'إعلام', y2024: 83.17, y2025: 86.72, action: 'ابنِ ملف أعمال صغير: كتابة، مونتاج، أو تقديم.' },
+            { name: 'آثار', y2024: 78.05, y2025: 82.34, action: 'اختيار مناسب لمن يحب التاريخ والبحث والعمل الميداني.' },
+            { name: 'تجارة', y2024: 68.66, y2025: 72.19, action: 'اجعل المهارات الرقمية واللغة جزءًا من الخطة.' },
+        ],
+    },
 ];
 
-const motionCards = [
-    ['1', 'افتح الرابط الرسمي', '🔗'],
-    ['2', 'تأكد من الأمان', '🛡️'],
-    ['3', 'احسب النسبة', '🧮'],
-];
+const formatPercent = (value) => `${value.toFixed(1)}%`;
 
-const motivationVideos = [
-    {
-        title: 'قوة الاستمرار بعد أي نتيجة',
-        description: 'فكرة TED عن الشغف والمثابرة: النتيجة ليست نهاية القصة، الاستمرار الذكي يصنع الفرق.',
-        duration: '6:12',
-        youtubeId: 'H14bBuluwB8',
-        sourceLabel: 'TED · YouTube',
-        mood: 'استمرار',
-        icon: '🔥',
-    },
-    {
-        title: 'عقلية النمو: أقدر أتحسن',
-        description: 'فيديو مناسب لفكرة أن المهارة تتطور بالتدريب، وأن الخطأ أو النتيجة ليسا حكمًا نهائيًا.',
-        duration: '10:21',
-        youtubeId: '_X0mgOOSpLU',
-        sourceLabel: 'TEDx · YouTube',
-        mood: 'نمو',
-        icon: '🌱',
-    },
-    {
-        title: 'تطوير المهارات بالعربي',
-        description: 'فيديو عربي عن معنى تطوير المهارات ولماذا يحتاج الطالب يبني نفسه بعد النتيجة خطوة بخطوة.',
-        duration: 'متغير',
-        youtubeId: '5MTAMo0k67k',
-        sourceLabel: 'ياسر الحزيمي · YouTube',
-        mood: 'مهارات',
-        icon: '🧠',
-    },
-    {
-        title: 'تعلّم أي مهارة في 20 ساعة',
-        description: 'فيديو إنجليزي عملي عن طريقة البدء في أي مهارة جديدة وتقليل حاجز الخوف من البداية.',
-        duration: '19:27',
-        youtubeId: '5MgBikgcWnY',
-        sourceLabel: 'TEDx · YouTube',
-        mood: 'Skill',
-        icon: '⚡',
-    },
-];
+const getPredictedCutoff = (college) => {
+    const trend = college.y2025 - college.y2024;
+    return Math.max(50, Math.min(99, college.y2025 + trend * 0.35));
+};
 
-const resultGameCards = [
-    {
-        id: 'official-link',
-        icon: '🔗',
-        title: 'اختار الرابط الرسمي',
-        prompt: 'ابدأ من موقع الوزارة فقط.',
-        reward: 'نجمة المصدر الآمن',
-        done: 'ممتاز! المصدر الرسمي هو البداية الصح.',
-    },
-    {
-        id: 'privacy',
-        icon: '🛡️',
-        title: 'احمِ رقم الجلوس',
-        prompt: 'لا تكتبه في تعليقات أو صفحات مجهولة.',
-        reward: 'نجمة الأمان',
-        done: 'رائع! بياناتك الشخصية لازم تفضل خاصة.',
-    },
-    {
-        id: 'calm',
-        icon: '🌬️',
-        title: 'اهدأ 30 ثانية',
-        prompt: 'خذ نفسًا عميقًا قبل فتح النتيجة.',
-        reward: 'نجمة الهدوء',
-        done: 'جميل! الهدوء يساعدك تقرأ النتيجة بوضوح.',
-    },
-    {
-        id: 'skill',
-        icon: '🚀',
-        title: 'اختار مهارة تبدأ بها',
-        prompt: 'لغة، برمجة، تصميم، أو عادة مذاكرة.',
-        reward: 'نجمة المستقبل',
-        done: 'قوي! مهارة واحدة صغيرة ممكن تغيّر الطريق.',
-    },
-];
+const getMatchStatus = (percentage, predictedCutoff) => {
+    if (!percentage) {
+        return {
+            key: 'waiting',
+            label: 'أدخل المجموع',
+            message: 'سنقارن نتيجتك بالسنوات السابقة.',
+        };
+    }
+
+    const gap = Number(percentage) - predictedCutoff;
+    if (gap >= 1.5) {
+        return {
+            key: 'safe',
+            label: 'فرصة قوية',
+            message: 'ضعها ضمن أولوياتك مع بدائل قريبة.',
+        };
+    }
+    if (gap >= 0) {
+        return {
+            key: 'near',
+            label: 'قريبة',
+            message: 'راقب التنسيق الرسمي وجهّز بدائل واقعية.',
+        };
+    }
+    if (gap >= -2) {
+        return {
+            key: 'stretch',
+            label: 'اختيار طموح',
+            message: 'ممكنة فقط إذا انخفض الحد الأدنى أو اختلف التوزيع.',
+        };
+    }
+    return {
+        key: 'plan',
+        label: 'خطة بديلة',
+        message: 'ابحث عن بدائل قريبة وابدأ مهارة داعمة.',
+    };
+};
 
 export default function ThanaweyaResultPage() {
-    const [activeMode, setActiveMode] = useState(journeyModes[0].id);
+    const [degreeSystemId, setDegreeSystemId] = useState('new');
     const [score, setScore] = useState('');
-    const [total, setTotal] = useState('410');
-    const [checkedItems, setCheckedItems] = useState({});
-    const [completedGameCards, setCompletedGameCards] = useState({});
+    const [total, setTotal] = useState('320');
+    const [activeTrackId, setActiveTrackId] = useState('science');
 
-    const selectedMode = journeyModes.find((mode) => mode.id === activeMode) || journeyModes[0];
+    const selectedSystem = degreeSystems.find((system) => system.id === degreeSystemId) || degreeSystems[0];
+    const selectedTrack = admissionTracks.find((track) => track.id === activeTrackId) || admissionTracks[0];
 
     const percentage = useMemo(() => {
         const numericScore = Number(score);
@@ -150,156 +142,143 @@ export default function ThanaweyaResultPage() {
         if (!numericScore || !numericTotal || numericScore < 0 || numericTotal <= 0 || numericScore > numericTotal) {
             return null;
         }
-        return ((numericScore / numericTotal) * 100).toFixed(2);
+        return Number(((numericScore / numericTotal) * 100).toFixed(2));
     }, [score, total]);
 
     const estimate = useMemo(() => {
         if (!percentage) {
             return {
                 tone: 'muted',
-                label: 'أدخل المجموع لحساب النسبة',
-                tip: 'سنحسبها فورًا داخل جهازك بدون حفظ أي بيانات.',
+                label: 'أدخل المجموع',
+                tip: 'اختر النظام الصحيح أولًا، ثم اكتب مجموع الطالب فقط.',
             };
         }
 
-        const value = Number(percentage);
-        if (value >= 90) {
+        if (percentage >= 90) {
             return {
                 tone: 'excellent',
-                label: 'ممتاز',
-                tip: 'ابدأ مقارنة الكليات المناسبة لهدفك، ولا تنسَ ترتيب البدائل.',
+                label: 'نطاق مرتفع',
+                tip: 'ابدأ بالمقارنة بين كليات القمة والبدائل القريبة حسب الشعبة.',
             };
         }
-        if (value >= 80) {
+        if (percentage >= 80) {
             return {
                 tone: 'strong',
-                label: 'جيد جدًا',
-                tip: 'لديك اختيارات قوية. رتّب رغباتك بهدوء حسب الهدف والمكان.',
+                label: 'نطاق قوي',
+                tip: 'لديك فرص جيدة. اجعل الاختيار مبنيًا على الميول وسوق العمل.',
             };
         }
-        if (value >= 70) {
+        if (percentage >= 70) {
             return {
                 tone: 'good',
-                label: 'جيد',
-                tip: 'ركّز على البدائل الواقعية والمسارات العملية بجانب الكلية.',
-            };
-        }
-        if (value >= 60) {
-            return {
-                tone: 'fair',
-                label: 'مقبول',
-                tip: 'ابحث عن مسارات مهارية داعمة لسوق العمل، وابدأ بخطة قصيرة.',
+                label: 'نطاق متوسط',
+                tip: 'رتّب بدائل واقعية، وابدأ مهارة عملية بجانب الدراسة.',
             };
         }
         return {
             tone: 'support',
-            label: 'تحتاج خطة بدائل',
-            tip: 'النتيجة ليست نهاية الطريق. ابدأ بخطة مهارات واضحة وخطوات صغيرة.',
+            label: 'تحتاج خطة',
+            tip: 'النتيجة ليست نهاية الطريق. ركّز على بدائل مناسبة ومهارة قوية.',
         };
     }, [percentage]);
 
-    const checklistProgress = selectedMode.checklist.filter((item) => checkedItems[`${selectedMode.id}-${item}`]).length;
-    const completedGameCount = resultGameCards.filter((card) => completedGameCards[card.id]).length;
-    const gameProgress = Math.round((completedGameCount / resultGameCards.length) * 100);
-    const gameMessage = completedGameCount === resultGameCards.length
-        ? 'جاهز! عندك خطة آمنة وهادئة لما تفتح النتيجة.'
-        : completedGameCount > 0
-            ? 'جميل جدًا، كمّل باقي النجوم وخلي التجربة أهدأ.'
-            : 'اضغط على البطاقات واجمع النجوم قبل ما تفتح النتيجة.';
+    const analysisRows = useMemo(() => selectedTrack.colleges.map((college) => {
+        const predicted = getPredictedCutoff(college);
+        const status = getMatchStatus(percentage, predicted);
+        const gap = percentage ? Number((percentage - predicted).toFixed(1)) : null;
+        return {
+            ...college,
+            predicted,
+            status,
+            gap,
+        };
+    }), [percentage, selectedTrack]);
 
-    const toggleChecklist = (item) => {
-        const key = `${selectedMode.id}-${item}`;
-        setCheckedItems((current) => ({ ...current, [key]: !current[key] }));
-    };
-
-    const toggleGameCard = (cardId) => {
-        setCompletedGameCards((current) => ({ ...current, [cardId]: !current[cardId] }));
-    };
-
-    const resetGame = () => {
-        setCompletedGameCards({});
-    };
-
-    const handleModeAction = (event) => {
-        if (selectedMode.actionHref.startsWith('#')) {
-            event.preventDefault();
-            document.querySelector(selectedMode.actionHref)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const primarySuggestion = useMemo(() => {
+        if (!percentage) {
+            return 'أدخل المجموع واختر الشعبة لنقترح أقرب المسارات.';
         }
-    };
 
-    const selectedActionHref = selectedMode.actionHref.startsWith('http') || selectedMode.actionHref.startsWith('#')
-        ? selectedMode.actionHref
-        : withBasePath(selectedMode.actionHref);
+        const strongMatch = analysisRows.find((row) => row.status.key === 'safe' || row.status.key === 'near');
+        if (strongMatch) {
+            return `${strongMatch.name}: ${strongMatch.status.message}`;
+        }
+
+        const stretchMatch = analysisRows.find((row) => row.status.key === 'stretch');
+        if (stretchMatch) {
+            return `${stretchMatch.name}: اختيار طموح، لكن جهّز بدائل قوية.`;
+        }
+
+        return 'الأفضل الآن: وسّع دائرة البدائل، وابدأ مهارة عملية ترفع فرصك.';
+    }, [analysisRows, percentage]);
+
+    const handleSystemChange = (systemId) => {
+        const nextSystem = degreeSystems.find((system) => system.id === systemId) || degreeSystems[0];
+        setDegreeSystemId(nextSystem.id);
+        setTotal(String(nextSystem.total));
+    };
 
     return (
         <>
             <Head>
-                <title>نتيجة الثانوية العامة 2026 | رابط رسمي وخطوات آمنة | عبقورا</title>
+                <title>نتيجة الثانوية العامة 2026 | حاسبة وتوقعات تنسيق إرشادية | عبقورا</title>
                 <meta
                     name="description"
-                    content="صفحة تفاعلية للوصول إلى نتيجة الثانوية العامة 2026 من الرابط الرسمي، مع تنبيهات أمان وحاسبة نسبة بدون تخزين بيانات الطالب."
+                    content="صفحة مبسطة للوصول إلى نتيجة الثانوية العامة 2026 من الرابط الرسمي، مع حاسبة للنظام الجديد والقديم وتحليل إرشادي لتوقع مسارات الكليات."
                 />
                 <meta name="robots" content="index,follow" />
-                <meta property="og:title" content="نتيجة الثانوية العامة 2026 من المصدر الرسمي" />
+                <meta property="og:title" content="نتيجة الثانوية العامة 2026 وتحليل التنسيق" />
                 <meta
                     property="og:description"
-                    content="واجهة بسيطة وجذابة للوصول الآمن إلى نتيجة الثانوية العامة وحساب النسبة التقريبية."
+                    content="حاسبة آمنة وتحليل إرشادي جذاب يساعد الطالب يختار خطواته بعد النتيجة."
                 />
                 <meta property="og:type" content="website" />
             </Head>
 
             <main className="page shell rtl public-result-page result-dynamic-page">
-                <nav className="result-floating-header" aria-label="تنقل سريع داخل صفحة النتيجة">
+                <nav className="result-floating-header result-floating-header-simple" aria-label="تنقل سريع داخل صفحة النتيجة">
                     <Link href="/" className="result-floating-brand">عبقورا</Link>
                     <div className="result-floating-links">
-                        <a href="#result-top">الرئيسية</a>
-                        <a href="#result-videos">الفيديوهات</a>
                         <a href="#result-calculator">الحاسبة</a>
-                        <a href="#result-plan">ماذا بعد؟</a>
+                        <a href="#result-analysis">تحليل الكليات</a>
+                        <a href="#result-video">فيديو واحد</a>
+                        <a href="#result-plan">الخطوة التالية</a>
                     </div>
                     <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="small-button">
                         الرابط الرسمي
                     </a>
                 </nav>
 
-                <section className="result-dynamic-hero" id="result-top">
+                <section className="result-dynamic-hero result-simple-hero" id="result-top">
                     <div className="result-hero-orb one" aria-hidden="true" />
                     <div className="result-hero-orb two" aria-hidden="true" />
-                    <div className="result-floating-shape shape-one" aria-hidden="true">410</div>
+                    <div className="result-floating-shape shape-one" aria-hidden="true">320</div>
                     <div className="result-floating-shape shape-two" aria-hidden="true">%</div>
-                    <div className="result-floating-shape shape-three" aria-hidden="true">آمن</div>
+                    <div className="result-floating-shape shape-three" aria-hidden="true">توقع</div>
 
                     <div className="result-hero-copy">
-                        <span className="eyebrow">خدمة عامة من عبقورا</span>
-                        <h1>نتيجة الثانوية العامة 2026 بدون توتر</h1>
+                        <span className="eyebrow">نسخة مبسطة للطلاب</span>
+                        <h1>نتيجتك رقم… والخطة أهم</h1>
                         <p>
-                            اختر ما تحتاجه الآن: الرابط الرسمي، تنبيه الأمان، حساب النسبة، أو خطة ما بعد النتيجة.
+                            افتح النتيجة من المصدر الرسمي، احسب النسبة حسب النظام الصحيح، ثم شاهد تحليلًا إرشاديًا للكليات بناءً على آخر عامين.
                         </p>
 
-                        <div className="result-mode-switcher" role="tablist" aria-label="اختر ما تحتاجه الآن">
-                            {journeyModes.map((mode) => (
-                                <button
-                                    key={mode.id}
-                                    type="button"
-                                    className={`result-mode-button ${activeMode === mode.id ? 'active' : ''}`}
-                                    onClick={() => setActiveMode(mode.id)}
-                                    role="tab"
-                                    aria-selected={activeMode === mode.id}
-                                >
-                                    <span aria-hidden="true">{mode.icon}</span>
-                                    {mode.label}
-                                </button>
-                            ))}
+                        <div className="hero-actions result-simple-actions">
+                            <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="button">
+                                افتح الرابط الرسمي
+                            </a>
+                            <a href="#result-calculator" className="small-button">
+                                احسب وتوقع الآن
+                            </a>
                         </div>
 
-                        <a href="#result-game" className="result-hero-game-cta">
-                            <span aria-hidden="true">🎮</span>
-                            جرّب لعبة الأربع نجوم
-                        </a>
+                        <p className="result-source-note">
+                            لا نطلب رقم الجلوس ولا نخزن بياناتك. الحساب يتم داخل الصفحة.
+                        </p>
                     </div>
 
-                    <aside className="result-live-card" aria-live="polite">
-                        <div className="result-motion-stage" aria-label="عرض متحرك لخطوات الصفحة">
+                    <aside className="result-live-card result-analysis-card" aria-live="polite">
+                        <div className="result-motion-stage" aria-label="عرض متحرك مختصر للتحليل">
                             <div className="motion-browser">
                                 <div className="motion-browser-top">
                                     <span />
@@ -308,199 +287,80 @@ export default function ThanaweyaResultPage() {
                                 </div>
                                 <div className="motion-browser-body">
                                     <div className="motion-scan-line" aria-hidden="true" />
-                                    {motionCards.map(([number, label, icon]) => (
-                                        <div className="motion-step-row" key={label}>
-                                            <b>{number}</b>
-                                            <span>{icon}</span>
-                                            <small>{label}</small>
-                                        </div>
-                                    ))}
+                                    <div className="motion-step-row">
+                                        <b>1</b>
+                                        <span>🎓</span>
+                                        <small>{selectedSystem.label}: {selectedSystem.total} درجة</small>
+                                    </div>
+                                    <div className="motion-step-row">
+                                        <b>2</b>
+                                        <span>📊</span>
+                                        <small>{selectedTrack.label}</small>
+                                    </div>
+                                    <div className="motion-step-row">
+                                        <b>3</b>
+                                        <span>✨</span>
+                                        <small>{percentage ? `${percentage}%` : 'اكتب المجموع'}</small>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="motion-floating-badge badge-official">رسمي</div>
-                            <div className="motion-floating-badge badge-private">لا نخزن بياناتك</div>
+                            <div className="motion-floating-badge badge-official">رسمي + إرشادي</div>
+                            <div className="motion-floating-badge badge-private">لا نخزن بيانات</div>
                         </div>
 
-                        <span className="result-live-icon" aria-hidden="true">{selectedMode.icon}</span>
+                        <span className={`result-score-badge tone-${estimate.tone}`}>{estimate.label}</span>
                         <div>
-                            <strong>{selectedMode.title}</strong>
-                            <p>{selectedMode.description}</p>
+                            <strong>اقتراح مبدئي</strong>
+                            <p>{primarySuggestion}</p>
                         </div>
-                        <a
-                            href={selectedActionHref}
-                            target={selectedMode.actionHref.startsWith('http') ? '_blank' : undefined}
-                            rel={selectedMode.actionHref.startsWith('http') ? 'noopener noreferrer' : undefined}
-                            className="button"
-                            onClick={handleModeAction}
-                        >
-                            {selectedMode.actionLabel}
+                        <a href="#result-analysis" className="button">
+                            شاهد التحليل
                         </a>
                     </aside>
 
-                    <a href="#result-videos" className="result-scroll-cue" aria-label="انتقل إلى الفيديوهات">
-                        <span>مرّر للأسفل</span>
+                    <a href="#result-calculator" className="result-scroll-cue" aria-label="انتقل إلى الحاسبة">
+                        <span>ابدأ هنا</span>
                         <b aria-hidden="true">↓</b>
                     </a>
                 </section>
 
-                <section className="result-video-section" id="result-videos" aria-labelledby="result-videos-title">
-                    <div className="result-video-heading">
-                        <div>
-                            <span className="eyebrow">فيديوهات تحفيز ومهارات</span>
-                            <h2 id="result-videos-title">شاهد فكرة تساعدك تبدأ صح</h2>
-                        </div>
-                        <p>اختر فيديو حسب حالتك: هدوء، عقلية نمو، تطوير مهارات بالعربي، أو طريقة عملية لتعلم أي مهارة.</p>
-                    </div>
-
-                    <div className="result-video-grid">
-                        {motivationVideos.map((video, index) => (
-                            <article className="result-video-card" key={video.title}>
-                                <div className="result-video-frame">
-                                    {video.youtubeId ? (
-                                        <iframe
-                                            src={`https://www.youtube-nocookie.com/embed/${video.youtubeId}`}
-                                            title={video.title}
-                                            loading="lazy"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                            allowFullScreen
-                                        />
-                                    ) : (
-                                        <video
-                                            src={withBasePath(video.src)}
-                                            controls
-                                            preload="metadata"
-                                            playsInline
-                                            aria-label={video.title}
-                                        />
-                                    )}
-                                    <span className="result-video-mood">{video.icon} {video.mood}</span>
-                                    <span className="result-video-duration">{video.duration}</span>
-                                </div>
-                                <div className="result-video-copy">
-                                    <span>فيديو {index + 1} · {video.sourceLabel}</span>
-                                    <h3>{video.title}</h3>
-                                    <p>{video.description}</p>
-                                </div>
-                            </article>
-                        ))}
-                    </div>
-                </section>
-
-                <section className="result-quick-stats" aria-label="لماذا هذه الصفحة آمنة؟">
-                    {quickStats.map(([title, description]) => (
-                        <div key={title}>
-                            <strong>{title}</strong>
-                            <span>{description}</span>
-                        </div>
-                    ))}
-                </section>
-
-                <section className="result-game-section" id="result-game" aria-labelledby="result-game-title">
-                    <div className="result-game-copy">
-                        <span className="eyebrow">لعبة 30 ثانية</span>
-                        <h2 id="result-game-title">اجمع 4 نجوم قبل النتيجة</h2>
-                        <p>
-                            لعبة بسيطة تساعد الطالب يبدأ بهدوء: مصدر رسمي، أمان، نفس عميق، وخطوة مهارة بعد النتيجة.
-                        </p>
-
-                        <div className="result-game-score" aria-live="polite">
-                            <strong>{completedGameCount}/{resultGameCards.length}</strong>
-                            <span>نجوم جاهزة</span>
-                        </div>
-
-                        <div className="result-game-progress" aria-hidden="true">
-                            <span style={{ width: `${gameProgress}%` }} />
-                        </div>
-
-                        <p className="result-game-message">{gameMessage}</p>
-
-                        <button
-                            type="button"
-                            className="small-button"
-                            onClick={resetGame}
-                            disabled={completedGameCount === 0}
-                        >
-                            إعادة اللعبة
-                        </button>
-                    </div>
-
-                    <div className="result-game-board" aria-label="بطاقات لعبة الاستعداد للنتيجة">
-                        {resultGameCards.map((card) => {
-                            const isDone = Boolean(completedGameCards[card.id]);
-                            return (
-                                <button
-                                    key={card.id}
-                                    type="button"
-                                    className={`result-game-card ${isDone ? 'done' : ''}`}
-                                    onClick={() => toggleGameCard(card.id)}
-                                    aria-pressed={isDone}
-                                >
-                                    <span className="result-game-card-icon" aria-hidden="true">
-                                        {isDone ? '⭐' : card.icon}
-                                    </span>
-                                    <small>{card.reward}</small>
-                                    <strong>{card.title}</strong>
-                                    <p>{isDone ? card.done : card.prompt}</p>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                <section className="result-workspace">
-                    <article className="card result-checklist-card">
-                        <div className="result-card-heading">
-                            <div>
-                                <span className="eyebrow">قائمة صغيرة</span>
-                                <h2>{selectedMode.label}</h2>
-                            </div>
-                            <span className="result-progress-pill">{checklistProgress}/{selectedMode.checklist.length}</span>
-                        </div>
-
-                        <div className="result-mini-progress" aria-hidden="true">
-                            <span style={{ width: `${(checklistProgress / selectedMode.checklist.length) * 100}%` }} />
-                        </div>
-
-                        <div className="result-checklist">
-                            {selectedMode.checklist.map((item) => {
-                                const key = `${selectedMode.id}-${item}`;
-                                return (
-                                    <button
-                                        key={item}
-                                        type="button"
-                                        className={`result-check-item ${checkedItems[key] ? 'checked' : ''}`}
-                                        onClick={() => toggleChecklist(item)}
-                                    >
-                                        <span aria-hidden="true">{checkedItems[key] ? '✓' : '○'}</span>
-                                        {item}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </article>
-
+                <section className="result-workspace result-core-workspace">
                     <article className="card result-calculator-card dynamic" id="result-calculator">
                         <div className="result-card-heading">
                             <div>
                                 <span className="eyebrow">حاسبة مباشرة</span>
-                                <h2>احسب النسبة التقريبية</h2>
+                                <h2>احسب النسبة بالنظام الصحيح</h2>
                             </div>
                             <span className={`result-score-badge tone-${estimate.tone}`}>
-                                {estimate.label}
+                                {percentage ? `${percentage}%` : estimate.label}
                             </span>
                         </div>
 
-                        <p>اكتب المجموع فقط. لا نحفظ ولا نرسل هذه الأرقام لأي مكان.</p>
+                        <div className="result-system-toggle" role="tablist" aria-label="اختر نظام الثانوية العامة">
+                            {degreeSystems.map((system) => (
+                                <button
+                                    key={system.id}
+                                    type="button"
+                                    className={degreeSystemId === system.id ? 'active' : ''}
+                                    onClick={() => handleSystemChange(system.id)}
+                                >
+                                    <strong>{system.label}</strong>
+                                    <span>{system.total} درجة · {system.badge}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        <p className="result-source-note">{selectedSystem.note}</p>
 
                         <div className="result-input-grid">
                             <label htmlFor="score">
-                                <span>المجموع</span>
+                                <span>مجموع الطالب</span>
                                 <input
                                     id="score"
                                     inputMode="decimal"
                                     value={score}
                                     onChange={(event) => setScore(event.target.value)}
-                                    placeholder="365"
+                                    placeholder={degreeSystemId === 'new' ? '285' : '365'}
                                 />
                             </label>
 
@@ -511,7 +371,7 @@ export default function ThanaweyaResultPage() {
                                     inputMode="decimal"
                                     value={total}
                                     onChange={(event) => setTotal(event.target.value)}
-                                    placeholder="410"
+                                    placeholder={String(selectedSystem.total)}
                                 />
                             </label>
                         </div>
@@ -522,45 +382,168 @@ export default function ThanaweyaResultPage() {
                             <p>{estimate.tip}</p>
                         </div>
                     </article>
+
+                    <article className="card result-prediction-summary">
+                        <div className="result-card-heading">
+                            <div>
+                                <span className="eyebrow">توقع إرشادي</span>
+                                <h2>ما أقرب مسار لك؟</h2>
+                            </div>
+                            <span className="result-progress-pill">آخر عامين</span>
+                        </div>
+
+                        <div className="result-track-tabs" role="tablist" aria-label="اختر الشعبة">
+                            {admissionTracks.map((track) => (
+                                <button
+                                    key={track.id}
+                                    type="button"
+                                    className={track.id === activeTrackId ? 'active' : ''}
+                                    onClick={() => setActiveTrackId(track.id)}
+                                >
+                                    {track.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <p>{selectedTrack.helper}</p>
+
+                        <div className="result-prediction-highlight">
+                            <span>أفضل قراءة الآن</span>
+                            <strong>{primarySuggestion}</strong>
+                        </div>
+
+                        <a href="#result-analysis" className="small-button">افتح الرسوم والتحليل</a>
+                    </article>
+                </section>
+
+                <section className="result-analysis-section" id="result-analysis" aria-labelledby="result-analysis-title">
+                    <div className="result-video-heading">
+                        <div>
+                            <span className="eyebrow">Data analysis</span>
+                            <h2 id="result-analysis-title">تحليل آخر عامين وتوقع مبدئي</h2>
+                        </div>
+                        <p>
+                            الرسم يقارن 2024 و2025 من صفحات الحدود الدنيا الرسمية، بعد تحويل الدرجات إلى نسب مئوية لأن 2025 يستخدم نظام 320 درجة.
+                        </p>
+                    </div>
+
+                    <div className="result-source-links" aria-label="مصادر بيانات التنسيق">
+                        <a href={selectedTrack.source2025} target="_blank" rel="noopener noreferrer">مصدر 2025 الرسمي</a>
+                        <a href={selectedTrack.source2024} target="_blank" rel="noopener noreferrer">مصدر 2024 الرسمي</a>
+                        <a href={tansikUrl} target="_blank" rel="noopener noreferrer">بوابة التنسيق</a>
+                    </div>
+
+                    <div className="result-analysis-grid">
+                        {analysisRows.map((college) => {
+                            const maxBar = Math.max(college.y2024, college.y2025, college.predicted, percentage || 0, 100);
+                            return (
+                                <article className={`result-college-card status-${college.status.key}`} key={college.name}>
+                                    <div className="result-college-header">
+                                        <div>
+                                            <strong>{college.name}</strong>
+                                            <span>{college.status.message}</span>
+                                        </div>
+                                        <small>{college.status.label}</small>
+                                    </div>
+
+                                    <div className="result-bars" aria-label={`تحليل ${college.name}`}>
+                                        <div>
+                                            <span>2024</span>
+                                            <b style={{ width: `${(college.y2024 / maxBar) * 100}%` }} />
+                                            <em>{formatPercent(college.y2024)}</em>
+                                        </div>
+                                        <div>
+                                            <span>2025</span>
+                                            <b style={{ width: `${(college.y2025 / maxBar) * 100}%` }} />
+                                            <em>{formatPercent(college.y2025)}</em>
+                                        </div>
+                                        <div className="predicted">
+                                            <span>توقع</span>
+                                            <b style={{ width: `${(college.predicted / maxBar) * 100}%` }} />
+                                            <em>{formatPercent(college.predicted)}</em>
+                                        </div>
+                                        {percentage ? (
+                                            <div className="student">
+                                                <span>أنت</span>
+                                                <b style={{ width: `${(percentage / maxBar) * 100}%` }} />
+                                                <em>{formatPercent(percentage)}</em>
+                                            </div>
+                                        ) : null}
+                                    </div>
+
+                                    <div className="result-gap-row">
+                                        <span>{college.gap === null ? '—' : `${college.gap > 0 ? '+' : ''}${college.gap}%`}</span>
+                                        <p>{college.action}</p>
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+
+                    <p className="result-analysis-disclaimer">
+                        تنبيه دقة: هذه قراءة إرشادية مبنية على الحدود الدنيا المنشورة في موقع التنسيق. التوقع ليس قبولًا رسميًا، ويجب مراجعة مكتب التنسيق عند إعلان الحدود الدنيا النهائية.
+                    </p>
+                </section>
+
+                <section className="result-video-section result-featured-video" id="result-video" aria-labelledby="result-video-title">
+                    <div className="result-video-heading">
+                        <div>
+                            <span className="eyebrow">فيديو واحد فقط</span>
+                            <h2 id="result-video-title">فكرة تساعدك بعد النتيجة</h2>
+                        </div>
+                        <p>اخترنا فيديو عربي واحد لأنه الأقرب لهذه الشريحة: ماذا أفعل بنفسي بعد ظهور النتيجة؟</p>
+                    </div>
+
+                    <article className="result-video-card result-video-card-featured">
+                        <div className="result-video-frame">
+                            <iframe
+                                src={`https://www.youtube-nocookie.com/embed/${featuredVideo.youtubeId}`}
+                                title={featuredVideo.title}
+                                loading="lazy"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                            />
+                            <span className="result-video-mood">{featuredVideo.icon} {featuredVideo.mood}</span>
+                            <span className="result-video-duration">{featuredVideo.duration}</span>
+                        </div>
+                        <div className="result-video-copy">
+                            <span>{featuredVideo.sourceLabel}</span>
+                            <h3>{featuredVideo.title}</h3>
+                            <p>{featuredVideo.description}</p>
+                        </div>
+                    </article>
                 </section>
 
                 <section className="result-action-strip">
                     <div>
-                        <span className="eyebrow">تنبيه مهم</span>
-                        <h2>عبقورا لا يعرض النتيجة بنفسه</h2>
+                        <span className="eyebrow">مصادر مهمة</span>
+                        <h2>النتيجة والتنسيق من المواقع الرسمية فقط</h2>
                         <p>
-                            نحن نوفر تجربة إرشادية وروابط رسمية فقط. لا نستخدم scraping، ولا نطلب رقم الجلوس، ولا نخزن بيانات الطالب.
+                            عبقورا يساعدك بالحساب والتحليل، لكنه لا يعرض النتيجة ولا يقرر القبول. استخدم مواقع الوزارة والتنسيق للتحقق النهائي.
                         </p>
                     </div>
-                    <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="button">
-                        الرابط الرسمي
-                    </a>
-                </section>
-
-                <section className="result-help-grid interactive" aria-label="اختيارات سريعة">
-                    {journeyModes.slice(1).map((mode) => (
-                        <button
-                            key={mode.id}
-                            type="button"
-                            className={`result-help-tile ${activeMode === mode.id ? 'active' : ''}`}
-                            onClick={() => setActiveMode(mode.id)}
-                        >
-                            <span aria-hidden="true">{mode.icon}</span>
-                            <strong>{mode.title}</strong>
-                            <small>{mode.description}</small>
-                        </button>
-                    ))}
+                    <div className="result-action-buttons">
+                        <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="button">
+                            رابط النتيجة الرسمي
+                        </a>
+                        <a href={tansikUrl} target="_blank" rel="noopener noreferrer" className="small-button">
+                            موقع التنسيق
+                        </a>
+                    </div>
                 </section>
 
                 <section className="result-growth-card" id="result-plan">
                     <div>
-                        <span className="eyebrow">من النتيجة إلى المهارة</span>
-                        <h2>ابدأ بناء مهارة حقيقية بعد الثانوية</h2>
+                        <span className="eyebrow">الخطوة التالية</span>
+                        <h2>لا تجعل الاختيار قائمًا على المجموع فقط</h2>
                         <p>
-                            عبقورا يساعد الأطفال يتعلمون بخطوات صغيرة. ونفس الفكرة تنفع أي طالب: هدف واضح، تدريب عملي، ومتابعة بسيطة.
+                            رتّب الرغبات حسب الميول، فرص العمل، المحافظة، والمهارة التي تستطيع تطويرها خلال أول سنة جامعة.
                         </p>
                     </div>
-                    <Link href="/" className="button">تعرف على عبقورا</Link>
+                    <div className="result-action-buttons">
+                        <Link href="/" className="button">تعرف على عبقورا</Link>
+                        <a href={ministryUrl} target="_blank" rel="noopener noreferrer" className="small-button">وزارة التربية والتعليم</a>
+                    </div>
                 </section>
             </main>
         </>
