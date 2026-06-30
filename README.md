@@ -204,6 +204,22 @@ The AI tutor:
 
 If `OPENAI_API_KEY` is not configured, the backend returns a clear disabled-state message and no OpenAI request is made. To enable it in production, add `OPENAI_API_KEY` in Render's environment variables and redeploy the backend. `OPENAI_MODEL` is optional and defaults to `gpt-4.1-mini`.
 
+## Public AI assistant
+
+The Thanaweya public page includes a floating assistant. In production it first calls the backend endpoint:
+
+```txt
+POST /api/ai/public-chat
+```
+
+This endpoint can answer general questions while using the current page context when the question is about Abqora, the official result link, percentage calculation, or college analysis. The frontend never stores or exposes an API key. To enable advanced answers publicly:
+
+1. Add `OPENAI_API_KEY` to the backend environment on Render.
+2. Optionally set `OPENAI_MODEL`; default is `gpt-4.1-mini`.
+3. Ensure the GitHub Pages build uses the deployed backend URL in `.github/workflows/pages.yml` as `NEXT_PUBLIC_API_BASE_URL`.
+
+If the backend AI provider is unavailable, the frontend falls back to a small offline helper so the chat UI still gives basic page guidance.
+
 ## Roles and sample accounts
 
 Supported roles are `student`, `parent`, `teacher`, and `admin`. Public registration remains limited to students and parents; teacher/admin accounts must be provisioned by an administrator or the seed script.

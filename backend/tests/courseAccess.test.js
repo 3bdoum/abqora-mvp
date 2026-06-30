@@ -348,6 +348,61 @@ test('AI tutor reports configuration issue when OpenAI key is missing', async ()
     }
 });
 
+test('public AI assistant reports configuration issue when OpenAI key is missing', async () => {
+    const previousApiKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+
+    try {
+        const response = await request(app)
+            .post('/api/ai/public-chat')
+            .send({ message: 'ما هي منصة عبقورا؟' });
+
+        assert.equal(response.status, 503);
+        assert.equal(response.body.code, 'AI_NOT_CONFIGURED');
+    } finally {
+        if (previousApiKey) process.env.OPENAI_API_KEY = previousApiKey;
+    }
+});
+
+test('public AI assistant answers general questions through OpenAI provider', async () => {
+    const previousApiKey = process.env.OPENAI_API_KEY;
+    const previousFetch = global.fetch;
+    process.env.OPENAI_API_KEY = 'test-openai-key';
+    global.fetch = async (url, options) => {
+        assert.equal(url, 'https://api.openai.com/v1/responses');
+        const body = JSON.parse(options.body);
+        assert.equal(body.model, 'gpt-4.1-mini');
+        assert.match(body.input[0].content, /مساعد عبقورا الذكي/);
+        assert.match(body.input[0].content, /أجب عن أسئلة المستخدم العامة/);
+        assert.match(body.input[1].content, /ما هي أفضل طريقة للمذاكرة/);
+        return {
+            ok: true,
+            json: async () => ({ output_text: 'ابدأ بخطة قصيرة: حدد مادة واحدة، ذاكر 25 دقيقة، ثم راجع بأسئلة بسيطة.' }),
+        };
+    };
+
+    try {
+        const response = await request(app)
+            .post('/api/ai/public-chat')
+            .send({
+                message: 'ما هي أفضل طريقة للمذاكرة؟',
+                pageContext: 'النسبة الحالية: 82%',
+                history: [{ role: 'user', text: 'مرحبا' }],
+            });
+
+        assert.equal(response.status, 200);
+        assert.equal(response.body.status, 'answered');
+        assert.match(response.body.message, /خطة قصيرة/);
+    } finally {
+        if (previousApiKey) {
+            process.env.OPENAI_API_KEY = previousApiKey;
+        } else {
+            delete process.env.OPENAI_API_KEY;
+        }
+        global.fetch = previousFetch;
+    }
+});
+
 test('AI tutor answers available lessons and stores the exchange', async () => {
     const data = await setupScenario();
     const previousApiKey = process.env.OPENAI_API_KEY;

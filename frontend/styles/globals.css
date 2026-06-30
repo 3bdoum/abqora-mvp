@@ -3684,6 +3684,7 @@ input:focus, select:focus, textarea:focus {
 .result-simple-hero {
     grid-template-columns: minmax(460px, 0.9fr) minmax(390px, 0.82fr);
     align-items: start;
+    min-height: 610px;
 }
 
 .result-simple-hero .eyebrow {
@@ -3713,8 +3714,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 .result-simple-hero .result-stat-card {
+    position: absolute;
+    top: 76px;
+    right: 28px;
+    width: min(47%, 720px);
     align-self: start;
-    margin-top: 56px;
+    margin-top: 0;
+    z-index: 3;
 }
 
 .result-simple-actions {
@@ -4305,6 +4311,24 @@ input:focus, select:focus, textarea:focus {
     background: rgba(248, 250, 252, 0.92);
 }
 
+.result-ai-message.thinking > div {
+    background:
+        radial-gradient(circle at 16% 18%, rgba(79, 70, 229, 0.14), transparent 34%),
+        rgba(248, 250, 252, 0.92);
+}
+
+.result-ai-message.thinking p::after {
+    content: '';
+    display: inline-block;
+    width: 22px;
+    height: 8px;
+    margin-inline-start: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
+    background-size: 200% 100%;
+    animation: resultAiThinking 1.2s ease-in-out infinite;
+}
+
 .result-ai-message.user > div {
     max-width: 86%;
     border-color: rgba(79, 70, 229, 0.22);
@@ -4406,6 +4430,12 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.82rem;
     font-weight: 950;
     cursor: pointer;
+}
+
+.result-ai-form input:disabled,
+.result-ai-form button:disabled {
+    cursor: progress;
+    opacity: 0.68;
 }
 
 .result-analysis-grid {
@@ -5087,6 +5117,17 @@ input:focus, select:focus, textarea:focus {
     }
     50% {
         transform: translateY(-5px);
+    }
+}
+
+@keyframes resultAiThinking {
+    0%, 100% {
+        background-position: 0% 50%;
+        opacity: 0.45;
+    }
+    50% {
+        background-position: 100% 50%;
+        opacity: 1;
     }
 }
 
@@ -6686,6 +6727,17 @@ input:focus, select:focus, textarea:focus {
         grid-template-columns: minmax(260px, 1fr) minmax(220px, 0.78fr);
     }
 
+    .result-simple-hero {
+        min-height: auto;
+    }
+
+    .result-simple-hero .result-stat-card {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: auto;
+    }
+
     .result-mode-switcher {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7179,6 +7231,7 @@ input:focus, select:focus, textarea:focus {
     .result-calculator-motion::after,
     .result-calc-keys span,
     .result-assistant-launcher,
+    .result-ai-message.thinking p::after,
     .result-live-icon,
     .result-quick-stats div,
     .result-checklist-card,

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { API_BASE_URL } from '../utils/api';
 
 const officialResultUrl = 'https://g12.emis.gov.eg/';
 const ministryUrl = 'https://moe.gov.eg/';
@@ -10,6 +11,7 @@ const literaryCutoffs2025Url = 'https://tansik.digital.gov.eg/application/Certif
 const scientificCutoffs2024Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitE2024.htm';
 const literaryCutoffs2024Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitA2024.htm';
 const supportEmail = 'support@abqora.com';
+const aiAgentEndpoint = (process.env.NEXT_PUBLIC_AI_AGENT_ENDPOINT || `${API_BASE_URL.replace(/\/$/, '')}/ai/public-chat`).replace(/\/$/, '');
 
 const degreeSystems = [
     {
@@ -280,6 +282,14 @@ const buildOfflineAssistantAnswer = (question, context) => {
     };
 };
 
+const getMessageHistoryForAi = (messages) => messages
+    .filter((message) => message.role === 'user' || message.role === 'assistant')
+    .slice(-6)
+    .map((message) => ({
+        role: message.role,
+        text: message.text,
+    }));
+
 const formatPercent = (value) => `${value.toFixed(1)}%`;
 
 const getPredictedCutoff = (college) => {
@@ -333,6 +343,8 @@ export default function ThanaweyaResultPage() {
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [assistantInput, setAssistantInput] = useState('');
     const [assistantMessages, setAssistantMessages] = useState(assistantStarterMessages);
+    const [isAssistantThinking, setIsAssistantThinking] = useState(false);
+    const [assistantMode, setAssistantMode] = useState('offline');
 
     const selectedSystem = degreeSystems.find((system) => system.id === degreeSystemId) || degreeSystems[0];
     const selectedTrack = admissionTracks.find((track) => track.id === activeTrackId) || admissionTracks[0];
@@ -434,6 +446,23 @@ export default function ThanaweyaResultPage() {
         return 'الأفضل الآن: وسّع دائرة البدائل، وابدأ مهارة عملية ترفع فرصك.';
     }, [analysisRows, percentage]);
 
+    const aiPageContext = useMemo(() => {
+        const rows = analysisRows
+            .slice(0, 5)
+            .map((row) => `${row.name}: 2024 ${formatPercent(row.y2024)}, 2025 ${formatPercent(row.y2025)}, توقع ${formatPercent(row.predicted)}, الحالة ${row.status.label}`)
+            .join('\n');
+
+        return `
+النظام المختار: ${selectedSystem.label} (${selectedSystem.total} درجة)
+المجموع المدخل: ${score || 'غير مدخل'}
+النسبة الحالية: ${percentage ? `${percentage}%` : 'غير محسوبة'}
+الشعبة الحالية: ${selectedTrack.label}
+اقتراح الصفحة الحالي: ${primarySuggestion}
+ملخص التحليل الحالي:
+${rows}
+`.trim();
+    }, [analysisRows, percentage, primarySuggestion, score, selectedSystem, selectedTrack]);
+
     const supportMailHref = `mailto:${supportEmail}?subject=${encodeURIComponent('طلب دعم من صفحة الثانوية العامة')}&body=${encodeURIComponent('مرحبًا عبقورا، أحتاج مساعدة في:')}`;
     const latestAssistantMessage = [...assistantMessages].reverse().find((message) => message.role === 'assistant') || assistantStarterMessages[0];
 
@@ -444,17 +473,59 @@ export default function ThanaweyaResultPage() {
         primarySuggestion,
     });
 
-    const askAssistantQuestion = (question) => {
+    const askAssistantQuestion = async (question) => {
         const trimmedQuestion = question.trim();
         if (!trimmedQuestion) return;
 
-        const answer = getAssistantAnswer(trimmedQuestion);
-        setAssistantMessages((currentMessages) => [
-            ...currentMessages,
-            { role: 'user', text: trimmedQuestion },
-            answer,
-        ].slice(-10));
+        const userMessage = { role: 'user', text: trimmedQuestion };
+        const historyForAi = getMessageHistoryForAi(assistantMessages);
+        setAssistantMessages((currentMessages) => [...currentMessages, userMessage].slice(-12));
         setAssistantInput('');
+        setIsAssistantThinking(true);
+
+        try {
+            const response = await fetch(aiAgentEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: trimmedQuestion,
+                    pageContext: aiPageContext,
+                    history: historyForAi,
+                }),
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                const error = new Error(data?.message || 'AI agent is unavailable');
+                error.code = data?.code;
+                throw error;
+            }
+
+            setAssistantMode('advanced');
+            setAssistantMessages((currentMessages) => [
+                ...currentMessages,
+                {
+                    role: 'assistant',
+                    icon: '✨',
+                    title: 'مساعد عبقورا المتقدم',
+                    text: data.message,
+                    source: data.model ? `advanced-ai:${data.model}` : 'advanced-ai',
+                },
+            ].slice(-12));
+        } catch (error) {
+            const fallbackAnswer = getAssistantAnswer(trimmedQuestion);
+            setAssistantMode('offline');
+            setAssistantMessages((currentMessages) => [
+                ...currentMessages,
+                {
+                    ...fallbackAnswer,
+                    text: `${fallbackAnswer.text}\n\nملاحظة: المساعد المتقدم غير متصل الآن، لذلك استخدمت الإجابة المحلية المؤقتة.`,
+                    source: error.code === 'AI_NOT_CONFIGURED' ? 'advanced-ai-not-configured' : 'offline-fallback',
+                },
+            ].slice(-12));
+        } finally {
+            setIsAssistantThinking(false);
+        }
     };
 
     const openAssistant = (topic = 'start') => {
@@ -886,7 +957,7 @@ export default function ThanaweyaResultPage() {
                             <span aria-hidden="true">{latestAssistantMessage.icon}</span>
                             <div>
                                 <strong>{latestAssistantMessage.title}</strong>
-                                <small>Offline context agent · بدون API</small>
+                                <small>{assistantMode === 'advanced' ? 'Advanced AI agent · عبر الخادم' : 'Offline fallback · بدون API'}</small>
                             </div>
                             <button type="button" onClick={() => setIsAssistantOpen(false)} aria-label="إغلاق المساعد">×</button>
                         </div>
@@ -899,7 +970,19 @@ export default function ThanaweyaResultPage() {
                                         <div>
                                             {message.title ? <strong>{message.title}</strong> : null}
                                             <p>{message.text}</p>
-                                            {message.source ? <small>{message.source === 'offline-context' ? 'من معرفة عبقورا المحلية' : 'إجابة تقريبية'}</small> : null}
+                                            {message.source ? (
+                                                <small>
+                                                    {message.source?.startsWith('advanced-ai')
+                                                        ? 'إجابة من المساعد المتقدم'
+                                                        : message.source === 'advanced-ai-not-configured'
+                                                            ? 'المساعد المتقدم يحتاج تفعيل OPENAI_API_KEY'
+                                                            : message.source === 'offline-fallback'
+                                                                ? 'إجابة محلية مؤقتة'
+                                                                : message.source === 'offline-context'
+                                                                    ? 'من معرفة عبقورا المحلية'
+                                                                    : 'إجابة تقريبية'}
+                                                </small>
+                                            ) : null}
                                             {message.actionHref ? (
                                                 <a
                                                     href={message.actionHref}
@@ -912,6 +995,15 @@ export default function ThanaweyaResultPage() {
                                         </div>
                                     </div>
                                 ))}
+                                {isAssistantThinking ? (
+                                    <div className="result-ai-message assistant thinking">
+                                        <span aria-hidden="true">✨</span>
+                                        <div>
+                                            <strong>مساعد عبقورا المتقدم</strong>
+                                            <p>يفكر الآن...</p>
+                                        </div>
+                                    </div>
+                                ) : null}
                             </div>
 
                             <div className="result-ai-chips">
@@ -928,8 +1020,11 @@ export default function ThanaweyaResultPage() {
                                     onChange={(event) => setAssistantInput(event.target.value)}
                                     placeholder="اسأل عن النتيجة، النسبة، الكليات، عبقورا..."
                                     aria-label="اكتب سؤالًا لمساعد عبقورا"
+                                    disabled={isAssistantThinking}
                                 />
-                                <button type="submit">إرسال</button>
+                                <button type="submit" disabled={isAssistantThinking}>
+                                    {isAssistantThinking ? '...' : 'إرسال'}
+                                </button>
                             </form>
                         </div>
 

@@ -154,7 +154,7 @@ const ensureStudentLessonAccess = async (req, res, lessonId) => {
     return { lesson, course, progress, lessonState };
 };
 
-const callOpenAIResponses = async ({ systemPrompt, userPrompt }) => {
+const callOpenAIResponses = async ({ systemPrompt, userPrompt, maxOutputTokens = 450 }) => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
         const error = new Error('OPENAI_API_KEY is not configured');
@@ -175,7 +175,7 @@ const callOpenAIResponses = async ({ systemPrompt, userPrompt }) => {
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
-            max_output_tokens: 450,
+            max_output_tokens: maxOutputTokens,
         }),
     });
 
@@ -190,6 +190,90 @@ const callOpenAIResponses = async ({ systemPrompt, userPrompt }) => {
         model,
         text: getResponseText(payload),
     };
+};
+
+const buildPublicAssistantSystemPrompt = ({ pageContext }) => `
+أنت "مساعد عبقورا الذكي"، مساعد عام متقدم لزوار منصة عبقورا.
+
+مهمتك:
+- أجب عن أسئلة المستخدم العامة، وليس فقط الأسئلة الموجودة في بيانات الصفحة.
+- إذا كان السؤال عن عبقورا أو نتيجة الثانوية أو التنسيق، استخدم سياق الصفحة أدناه.
+- إذا كان السؤال خارج عبقورا، أجب بشكل عام ومفيد وآمن.
+- إذا لم تعرف شيئاً حديثاً أو رسمياً، قل إن المستخدم يجب أن يراجع المصدر الرسمي.
+- لا تدّعي أنك تعرض نتيجة الطالب، ولا تطلب رقم الجلوس، ولا تطلب بيانات شخصية.
+- لا تعطي نصائح طبية/قانونية/مالية عالية الخطورة كحقيقة نهائية؛ قدّم إرشاداً عاماً واطلب مراجعة مختص.
+- لا تساعد في الاحتيال أو الاختراق أو تجاوز الأنظمة.
+- اكتب غالباً بالعربية إذا كان السؤال بالعربية، وبالإنجليزية إذا كان السؤال بالإنجليزية.
+- اجعل الإجابة قصيرة وواضحة، ثم اقترح خطوة عملية.
+
+سياق عبقورا:
+- عبقورا منصة عربية RTL لتعليم البرمجة للأطفال.
+- تجربة التعلم تعتمد على فيديو شرح، تطبيق عملي، متابعة معلم، ولوحة ولي أمر.
+- صفحة الثانوية العامة الحالية تساعد الطالب على فتح الرابط الرسمي، حساب النسبة، وقراءة توقعات إرشادية من بيانات التنسيق.
+- عبقورا لا تخزن رقم الجلوس ولا تعرض النتيجة الرسمية.
+- النظام الجديد في الصفحة: 320 درجة. النظام القديم: 410 درجات.
+- التوقعات إرشادية فقط وليست قبولاً رسمياً.
+
+سياق الصفحة الحالي من المتصفح:
+${pageContext || 'لا يوجد سياق إضافي.'}
+`.trim();
+
+const chatWithPublicAssistant = async (req, res) => {
+    try {
+        const message = cleanText(req.body.message, 1800);
+        const pageContext = cleanText(req.body.pageContext, 1800);
+        const history = Array.isArray(req.body.history) ? req.body.history.slice(-6) : [];
+
+        if (!message || message.length < 2) {
+            return res.status(400).json({ message: 'اكتب سؤالاً واضحاً للمساعد' });
+        }
+
+        const sanitizedHistory = history
+            .map((item) => ({
+                role: item?.role === 'assistant' ? 'assistant' : 'user',
+                text: cleanText(item?.text, 500),
+            }))
+            .filter((item) => item.text)
+            .map((item, index) => `${index + 1}. ${item.role === 'assistant' ? 'المساعد' : 'المستخدم'}: ${item.text}`)
+            .join('\n');
+
+        const systemPrompt = buildPublicAssistantSystemPrompt({ pageContext });
+        const userPrompt = `
+المحادثة السابقة:
+${sanitizedHistory || 'لا توجد.'}
+
+سؤال المستخدم الآن:
+${message}
+`.trim();
+
+        let aiResult;
+        try {
+            aiResult = await callOpenAIResponses({
+                systemPrompt,
+                userPrompt,
+                maxOutputTokens: Number(process.env.PUBLIC_AI_MAX_TOKENS) || 900,
+            });
+        } catch (error) {
+            if (error.code === 'AI_NOT_CONFIGURED') {
+                return res.status(503).json({
+                    code: 'AI_NOT_CONFIGURED',
+                    message: 'المساعد المتقدم غير مفعّل بعد. أضف OPENAI_API_KEY في إعدادات الخادم.',
+                });
+            }
+            return res.status(502).json({ message: 'تعذر تشغيل المساعد المتقدم الآن. حاول لاحقاً.' });
+        }
+
+        const assistantMessage = cleanText(aiResult.text, 2400)
+            || 'أحتاج أن تعيد صياغة السؤال حتى أساعدك بشكل أفضل.';
+
+        return res.json({
+            message: assistantMessage,
+            status: 'answered',
+            model: aiResult.model,
+        });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
 };
 
 const chatWithTutor = async (req, res) => {
@@ -308,4 +392,4 @@ const getTutorHistory = async (req, res) => {
     }
 };
 
-module.exports = { chatWithTutor, getTutorHistory };
+module.exports = { chatWithTutor, getTutorHistory, chatWithPublicAssistant };
