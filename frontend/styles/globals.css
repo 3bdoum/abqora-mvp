@@ -4188,7 +4188,7 @@ input:focus, select:focus, textarea:focus {
     left: 22px;
     bottom: 84px;
     z-index: 121;
-    width: min(380px, calc(100vw - 32px));
+    width: min(460px, calc(100vw - 32px));
     overflow: hidden;
     border: 1px solid rgba(79, 70, 229, 0.16);
     border-radius: 28px;
@@ -4273,7 +4273,7 @@ input:focus, select:focus, textarea:focus {
 .result-ai-chat-log {
     display: grid;
     gap: 10px;
-    max-height: 330px;
+    max-height: 390px;
     overflow-y: auto;
     padding: 2px 2px 4px;
     scrollbar-width: thin;
@@ -4379,7 +4379,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 .result-ai-chips button,
-.result-ai-actions a {
+.result-ai-actions a,
+.result-ai-actions button {
     padding: 8px 10px;
     border: 1px solid rgba(79, 70, 229, 0.14);
     border-radius: 999px;
@@ -4390,6 +4391,10 @@ input:focus, select:focus, textarea:focus {
     font-weight: 950;
     text-decoration: none;
     cursor: pointer;
+}
+
+.result-ai-actions button {
+    color: #475569;
 }
 
 .result-ai-actions {

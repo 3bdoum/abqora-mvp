@@ -218,7 +218,7 @@ This endpoint can answer general questions while using the current page context 
 2. Optionally set `OPENAI_MODEL`; default is `gpt-4.1-mini`.
 3. Ensure the GitHub Pages build uses the deployed backend URL in `.github/workflows/pages.yml` as `NEXT_PUBLIC_API_BASE_URL`.
 
-If the backend AI provider is unavailable, the frontend falls back to a small offline helper so the chat UI still gives basic page guidance.
+If the backend AI provider is unavailable, the frontend keeps the chat UI available but shows a clear setup/connection message instead of pretending to answer broadly without AI.
 
 ## Roles and sample accounts
 
