@@ -1522,6 +1522,55 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.78rem;
 }
 
+.student-lesson-flow-card {
+    margin-top: 18px;
+    padding: 22px;
+    border: 1px solid rgba(79, 70, 229, 0.12);
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 12% 20%, rgba(14, 165, 233, 0.11), transparent 30%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.82));
+    box-shadow: 0 20px 52px rgba(79, 70, 229, 0.08);
+}
+
+.student-flow-steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.student-flow-steps div {
+    padding: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.student-flow-steps span {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    margin-bottom: 10px;
+    border-radius: 16px;
+    background: var(--primary-light);
+    font-size: 1.2rem;
+}
+
+.student-flow-steps strong {
+    display: block;
+    color: #0f172a;
+    font-weight: 950;
+}
+
+.student-flow-steps p {
+    margin: 5px 0 0;
+    color: var(--text-muted);
+    font-size: 0.83rem;
+    font-weight: 750;
+    line-height: 1.7;
+}
+
 .simple-disclosure {
     margin: 16px 0 22px;
     border: 1px solid rgba(79, 70, 229, 0.13);
@@ -2318,6 +2367,158 @@ input:focus, select:focus, textarea:focus {
     gap: 7px;
     flex-wrap: wrap;
     justify-content: flex-end;
+}
+
+.ai-support-admin {
+    display: grid;
+    gap: 20px;
+}
+
+.ai-support-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background:
+        radial-gradient(circle at 12% 20%, rgba(14, 165, 233, 0.12), transparent 28%),
+        radial-gradient(circle at 90% 12%, rgba(124, 58, 237, 0.12), transparent 25%),
+        #fff;
+}
+
+.ai-support-hero h2 {
+    margin: 4px 0 8px;
+}
+
+.ai-support-hero p {
+    max-width: 760px;
+    margin: 0;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.ai-support-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.ai-support-stat-grid .card {
+    padding: 18px;
+}
+
+.ai-support-stat-grid span {
+    display: inline-grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 16px;
+    background: var(--primary-light);
+    font-size: 1.2rem;
+}
+
+.ai-support-stat-grid strong {
+    display: block;
+    margin-top: 12px;
+    color: var(--primary);
+    font-size: 2rem;
+    font-weight: 950;
+}
+
+.ai-support-stat-grid p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    font-weight: 800;
+}
+
+.ai-support-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.compact-filter {
+    min-width: 170px;
+    margin: 0;
+    font-size: 0.78rem;
+}
+
+.compact-filter select {
+    margin-top: 6px;
+}
+
+.ai-admin-list {
+    display: grid;
+    gap: 12px;
+    max-height: 760px;
+    overflow: auto;
+    padding-inline-end: 4px;
+}
+
+.ai-admin-item,
+.support-admin-item {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 18px;
+    background: #f8fafc;
+}
+
+.ai-admin-item.status-error,
+.support-admin-item.status-new {
+    border-color: rgba(239, 68, 68, 0.2);
+    background: linear-gradient(135deg, #fff7ed, #fff);
+}
+
+.support-admin-item.status-resolved {
+    border-color: rgba(16, 185, 129, 0.2);
+    background: linear-gradient(135deg, #ecfdf5, #fff);
+}
+
+.ai-admin-item-header,
+.ai-admin-meta,
+.ai-admin-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ai-admin-item p,
+.support-admin-item p {
+    margin: 0;
+    color: #334155;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.8;
+}
+
+.ai-admin-item small,
+.support-admin-item small,
+.ai-admin-meta span {
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 850;
+}
+
+.support-admin-item h3 {
+    margin: 0;
+}
+
+.support-admin-item a {
+    color: var(--primary);
+    font-weight: 900;
+    text-decoration: none;
+}
+
+.ai-admin-item textarea,
+.support-admin-item textarea {
+    margin: 0;
+    border-radius: 14px;
+    font-size: 0.82rem;
 }
 
 .landing-audience-grid,
@@ -4441,6 +4642,66 @@ input:focus, select:focus, textarea:focus {
 .result-ai-form button:disabled {
     cursor: progress;
     opacity: 0.68;
+}
+
+.result-ai-support-form {
+    display: grid;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding: 12px;
+    border: 1px solid rgba(79, 70, 229, 0.14);
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.94));
+    box-shadow: 0 14px 34px rgba(79, 70, 229, 0.08);
+}
+
+.result-ai-support-form strong,
+.result-ai-support-form small {
+    display: block;
+}
+
+.result-ai-support-form strong {
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 950;
+}
+
+.result-ai-support-form small {
+    color: #64748b;
+    font-size: 0.74rem;
+    font-weight: 800;
+}
+
+.support-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.result-ai-support-form input,
+.result-ai-support-form textarea {
+    margin: 0;
+    min-height: 40px;
+    border-radius: 14px;
+    border-color: rgba(79, 70, 229, 0.14);
+    background: rgba(255, 255, 255, 0.9);
+    font-size: 0.78rem;
+}
+
+.result-ai-support-form textarea {
+    resize: vertical;
+}
+
+.support-status {
+    color: var(--primary) !important;
+    font-weight: 950 !important;
+}
+
+.support-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .result-analysis-grid {
@@ -6659,6 +6920,8 @@ input:focus, select:focus, textarea:focus {
     .result-help-grid,
     .result-action-strip,
     .result-growth-card,
+    .ai-support-columns,
+    .ai-support-stat-grid,
     .ai-review-item,
     .landing-safety-card,
     .parent-dashboard-layout,
@@ -6676,6 +6939,8 @@ input:focus, select:focus, textarea:focus {
     .teacher-stat-grid,
     .ai-review-summary,
     .achievement-grid,
+    .student-flow-steps,
+    .support-form-grid,
     .readiness-stat-grid {
         grid-template-columns: 1fr;
     }
@@ -6683,8 +6948,14 @@ input:focus, select:focus, textarea:focus {
     .readiness-hero,
     .readiness-row,
     .readiness-priority-card,
+    .ai-support-hero,
     .teacher-filter-card {
         grid-template-columns: 1fr;
+    }
+
+    .ai-support-hero {
+        align-items: stretch;
+        flex-direction: column;
     }
 
     .readiness-row-actions {

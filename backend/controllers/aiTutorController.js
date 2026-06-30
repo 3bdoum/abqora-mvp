@@ -1,7 +1,10 @@
+const crypto = require('crypto');
 const Lesson = require('../models/lessonModel');
 const Course = require('../models/courseModel');
 const Progress = require('../models/progressModel');
 const AiTutorExchange = require('../models/aiTutorExchangeModel');
+const AiPublicConversation = require('../models/aiPublicConversationModel');
+const SupportRequest = require('../models/supportRequestModel');
 const { getLessonState } = require('../utils/progressAccess');
 const { cleanText, isObjectId } = require('../utils/validation');
 
@@ -9,6 +12,13 @@ const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const DEFAULT_OPENAI_MODEL = 'gpt-4.1-mini';
 const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite';
+const PUBLIC_AI_DEFAULT_RATE_LIMIT_MAX = 8;
+const PUBLIC_AI_DEFAULT_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const PUBLIC_AI_DEFAULT_REPEAT_LIMIT = 3;
+const SUPPORT_DEFAULT_RATE_LIMIT_MAX = 4;
+const SUPPORT_DEFAULT_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const publicAiRateBuckets = new Map();
+const supportRateBuckets = new Map();
 
 const ageProfiles = {
     '5-8': {
@@ -80,6 +90,146 @@ const getConfiguredModelLabel = () => {
     if (provider === 'openai') return `openai:${process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL}`;
     return provider || 'unknown';
 };
+
+const getRequestIp = (req) => {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded.trim()) {
+        return forwarded.split(',')[0].trim();
+    }
+    return req.ip || req.socket?.remoteAddress || '';
+};
+
+const hashForAudit = (value) => {
+    if (!value) return '';
+    const salt = process.env.AI_LOG_SALT || process.env.JWT_SECRET || 'abqora-ai-log';
+    return crypto.createHash('sha256').update(`${salt}:${value}`).digest('hex').slice(0, 32);
+};
+
+const getPublicSessionId = (req) => cleanText(req.headers['x-abqora-session-id'], 80);
+
+const getPublicRequestMeta = (req) => {
+    const sessionId = getPublicSessionId(req);
+    const ip = getRequestIp(req);
+    return {
+        sessionId: sessionId ? hashForAudit(sessionId) : '',
+        ipHash: hashForAudit(ip),
+        rateKey: sessionId ? `session:${hashForAudit(sessionId)}` : `ip:${hashForAudit(ip)}`,
+        userAgent: cleanText(req.headers['user-agent'], 220),
+    };
+};
+
+const getEnvNumber = (key, fallback) => {
+    const value = Number(process.env[key]);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+};
+
+const pruneRateBuckets = (store, now, windowMs) => {
+    for (const [key, bucket] of store.entries()) {
+        if (now - bucket.startedAt > windowMs * 4) {
+            store.delete(key);
+        }
+    }
+};
+
+const enforceRollingRateLimit = ({ store, key, message = '', maxRequests, windowMs, repeatLimit }) => {
+    const now = Date.now();
+    pruneRateBuckets(store, now, windowMs);
+    const normalizedMessage = cleanText(message.toLowerCase().replace(/\s+/g, ' '), 260);
+    const bucket = store.get(key);
+    const nextBucket = bucket && now - bucket.startedAt <= windowMs
+        ? bucket
+        : {
+            startedAt: now,
+            count: 0,
+            lastMessage: '',
+            repeatedCount: 0,
+        };
+
+    nextBucket.count += 1;
+    if (normalizedMessage && normalizedMessage === nextBucket.lastMessage) {
+        nextBucket.repeatedCount += 1;
+    } else {
+        nextBucket.lastMessage = normalizedMessage;
+        nextBucket.repeatedCount = 1;
+    }
+    store.set(key, nextBucket);
+
+    if (nextBucket.count > maxRequests) {
+        return {
+            limited: true,
+            reason: 'too_many_requests',
+            retryAfterSeconds: Math.max(1, Math.ceil((nextBucket.startedAt + windowMs - now) / 1000)),
+        };
+    }
+
+    if (repeatLimit && nextBucket.repeatedCount > repeatLimit) {
+        return {
+            limited: true,
+            reason: 'repeated_message',
+            retryAfterSeconds: Math.max(1, Math.ceil((nextBucket.startedAt + windowMs - now) / 1000)),
+        };
+    }
+
+    return { limited: false };
+};
+
+const enforcePublicAiRateLimit = (req, message) => {
+    const meta = getPublicRequestMeta(req);
+    const limit = enforceRollingRateLimit({
+        store: publicAiRateBuckets,
+        key: `public-ai:${meta.rateKey}`,
+        message,
+        maxRequests: getEnvNumber('PUBLIC_AI_RATE_LIMIT_MAX', PUBLIC_AI_DEFAULT_RATE_LIMIT_MAX),
+        windowMs: getEnvNumber('PUBLIC_AI_RATE_LIMIT_WINDOW_MS', PUBLIC_AI_DEFAULT_RATE_LIMIT_WINDOW_MS),
+        repeatLimit: getEnvNumber('PUBLIC_AI_REPEAT_LIMIT', PUBLIC_AI_DEFAULT_REPEAT_LIMIT),
+    });
+
+    return { ...limit, meta };
+};
+
+const enforceSupportRateLimit = (req, message) => {
+    const meta = getPublicRequestMeta(req);
+    const limit = enforceRollingRateLimit({
+        store: supportRateBuckets,
+        key: `support:${meta.rateKey}`,
+        message,
+        maxRequests: getEnvNumber('SUPPORT_RATE_LIMIT_MAX', SUPPORT_DEFAULT_RATE_LIMIT_MAX),
+        windowMs: getEnvNumber('SUPPORT_RATE_LIMIT_WINDOW_MS', SUPPORT_DEFAULT_RATE_LIMIT_WINDOW_MS),
+        repeatLimit: 2,
+    });
+
+    return { ...limit, meta };
+};
+
+const serializePublicConversation = (conversation) => ({
+    _id: conversation._id,
+    sourcePage: conversation.sourcePage,
+    userMessage: conversation.userMessage,
+    assistantMessage: conversation.assistantMessage,
+    provider: conversation.provider,
+    model: conversation.model,
+    status: conversation.status,
+    errorCode: conversation.errorCode,
+    reviewStatus: conversation.reviewStatus,
+    adminNote: conversation.adminNote,
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+});
+
+const serializeSupportRequest = (request) => ({
+    _id: request._id,
+    sourcePage: request.sourcePage,
+    name: request.name,
+    email: request.email,
+    message: request.message,
+    lastQuestion: request.lastQuestion,
+    aiStatus: request.aiStatus,
+    status: request.status,
+    adminNote: request.adminNote,
+    createdAt: request.createdAt,
+    updatedAt: request.updatedAt,
+    resolvedAt: request.resolvedAt,
+});
 
 const isDisallowedStudentPrompt = (message) => {
     const normalized = message.toLowerCase();
@@ -318,6 +468,31 @@ const callConfiguredAiProvider = async (args) => {
     throw lastError;
 };
 
+const ABQORA_PUBLIC_KNOWLEDGE_BASE = `
+خدمات عبقورا الأساسية:
+- تعليم برمجة للأطفال بواجهة عربية RTL وبإشراف آمن.
+- مسار الطالب: مشاهدة فيديو شرح، فهم المطلوب، تطبيق عملي على Code.org، ثم طلب مراجعة المعلم عند الحاجة.
+- المعلم يرى الطلاب assigned له فقط، يراجع الإنجاز، يضيف ملاحظات، ويفتح أو يغلق الدروس عند الحاجة.
+- ولي الأمر يتابع تقدم الطالب ومراحل التعلم بدون تعقيد.
+- المدير يدير المناهج، فيديوهات الدروس، الإعلانات، ومراجعات الدعم.
+
+قواعد الدعم:
+- إذا كان السؤال عن مشكلة تقنية، اطلب وصفاً قصيراً للخطأ والصفحة التي ظهر فيها.
+- إذا احتاج المستخدم متابعة بشرية، اطلب منه استخدام زر الدعم داخل الصفحة.
+- لا تطلب كلمة مرور، مفاتيح API، رقم جلوس، أو بيانات شخصية حساسة.
+
+صفحة الثانوية العامة:
+- الهدف: رابط رسمي، حاسبة نسبة، تحليل إرشادي للكليات من بيانات تنسيق منشورة.
+- لا تعرض عبقورا النتيجة الرسمية ولا تخزن رقم الجلوس.
+- النظام الجديد: 320 درجة. النظام القديم: 410 درجات.
+- توقعات الكليات إرشادية وليست قبولاً رسمياً.
+
+أسلوب الإجابة:
+- أجب كرفيق ذكي ومفيد: مباشر، دافئ، وأسئل سؤال متابعة واحد فقط إذا كان ضرورياً.
+- لو السؤال عام، أجب من المعرفة العامة الآمنة.
+- لو السؤال عن أخبار أو قرارات حديثة قد تتغير، قل إن التحقق من المصدر الرسمي ضروري.
+`.trim();
+
 const buildPublicAssistantSystemPrompt = ({ pageContext }) => `
 أنت "مساعد عبقورا الذكي"، مساعد عام متقدم لزوار منصة عبقورا.
 
@@ -334,13 +509,8 @@ const buildPublicAssistantSystemPrompt = ({ pageContext }) => `
 - إذا طلب المستخدم شرحاً، استخدم أمثلة بسيطة. إذا طلب خطة، أعطه خطوات عملية. إذا سأل سؤالاً عاماً، أجب من معرفتك العامة بأمان.
 - اجعل الإجابة مفيدة ومختصرة غالباً، ويمكنك التفصيل إذا طلب المستخدم ذلك.
 
-سياق عبقورا:
-- عبقورا منصة عربية RTL لتعليم البرمجة للأطفال.
-- تجربة التعلم تعتمد على فيديو شرح، تطبيق عملي، متابعة معلم، ولوحة ولي أمر.
-- صفحة الثانوية العامة الحالية تساعد الطالب على فتح الرابط الرسمي، حساب النسبة، وقراءة توقعات إرشادية من بيانات التنسيق.
-- عبقورا لا تخزن رقم الجلوس ولا تعرض النتيجة الرسمية.
-- النظام الجديد في الصفحة: 320 درجة. النظام القديم: 410 درجات.
-- التوقعات إرشادية فقط وليست قبولاً رسمياً.
+قاعدة معرفة عبقورا:
+${ABQORA_PUBLIC_KNOWLEDGE_BASE}
 
 سياق الصفحة الحالي من المتصفح:
 ${pageContext || 'لا يوجد سياق إضافي.'}
@@ -348,12 +518,32 @@ ${pageContext || 'لا يوجد سياق إضافي.'}
 
 const chatWithPublicAssistant = async (req, res) => {
     try {
+        const rawMessage = typeof req.body.message === 'string' ? req.body.message : '';
+        if (rawMessage.length > 1800) {
+            return res.status(400).json({
+                code: 'AI_MESSAGE_TOO_LONG',
+                message: 'السؤال طويل جداً. اكتب رسالة أقصر حتى يستطيع المساعد الرد بدقة.',
+            });
+        }
+
         const message = cleanText(req.body.message, 1800);
         const pageContext = cleanText(req.body.pageContext, 1800);
+        const sourcePage = cleanText(req.body.sourcePage, 80) || 'public';
         const history = Array.isArray(req.body.history) ? req.body.history.slice(-6) : [];
 
         if (!message || message.length < 2) {
             return res.status(400).json({ message: 'اكتب سؤالاً واضحاً للمساعد' });
+        }
+
+        const rateLimit = enforcePublicAiRateLimit(req, message);
+        if (rateLimit.limited) {
+            return res.status(429).json({
+                code: 'AI_RATE_LIMITED',
+                message: rateLimit.reason === 'repeated_message'
+                    ? 'وصلتني نفس الرسالة أكثر من مرة. غيّر صياغة السؤال أو انتظر قليلاً.'
+                    : 'وصلت للحد المؤقت من رسائل المساعد. جرّب مرة أخرى بعد قليل.',
+                retryAfterSeconds: rateLimit.retryAfterSeconds,
+            });
         }
 
         const sanitizedHistory = history
@@ -382,6 +572,22 @@ ${message}
                 maxOutputTokens: Number(process.env.PUBLIC_AI_MAX_TOKENS) || 900,
             });
         } catch (error) {
+            await AiPublicConversation.create({
+                sourcePage,
+                sessionId: rateLimit.meta.sessionId,
+                ipHash: rateLimit.meta.ipHash,
+                userAgent: rateLimit.meta.userAgent,
+                pageContext,
+                userMessage: message,
+                assistantMessage: '',
+                provider: error.provider || getPrimaryAiProvider(),
+                model: error.model || getConfiguredModelLabel(),
+                status: error.code === 'AI_NOT_CONFIGURED' || error.code === 'AI_PROVIDER_NOT_SUPPORTED'
+                    ? 'setup_needed'
+                    : 'error',
+                errorCode: error.code || 'AI_PROVIDER_ERROR',
+            });
+
             if (error.code === 'AI_NOT_CONFIGURED') {
                 return res.status(503).json({
                     code: 'AI_NOT_CONFIGURED',
@@ -410,6 +616,19 @@ ${message}
 
         const assistantMessage = cleanText(aiResult.text, 2400)
             || 'أحتاج أن تعيد صياغة السؤال حتى أساعدك بشكل أفضل.';
+
+        await AiPublicConversation.create({
+            sourcePage,
+            sessionId: rateLimit.meta.sessionId,
+            ipHash: rateLimit.meta.ipHash,
+            userAgent: rateLimit.meta.userAgent,
+            pageContext,
+            userMessage: message,
+            assistantMessage,
+            provider: aiResult.provider,
+            model: aiResult.model,
+            status: 'answered',
+        });
 
         return res.json({
             message: assistantMessage,
@@ -521,6 +740,162 @@ const chatWithTutor = async (req, res) => {
     }
 };
 
+const createSupportRequest = async (req, res) => {
+    try {
+        const rawMessage = typeof req.body.message === 'string' ? req.body.message : '';
+        if (rawMessage.length > 1200) {
+            return res.status(400).json({
+                code: 'SUPPORT_MESSAGE_TOO_LONG',
+                message: 'رسالة الدعم طويلة جداً. اكتب وصفاً أقصر للمشكلة.',
+            });
+        }
+
+        const name = cleanText(req.body.name, 80);
+        const email = cleanText(req.body.email, 160).toLowerCase();
+        const message = cleanText(req.body.message, 1200);
+        const pageContext = cleanText(req.body.pageContext, 1200);
+        const lastQuestion = cleanText(req.body.lastQuestion, 600);
+        const aiStatus = cleanText(req.body.aiStatus, 80);
+        const sourcePage = cleanText(req.body.sourcePage, 80) || 'public';
+
+        if (!message || message.length < 8) {
+            return res.status(400).json({ message: 'اكتب وصفاً واضحاً لطلب الدعم' });
+        }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({ message: 'البريد الإلكتروني غير صالح' });
+        }
+
+        const rateLimit = enforceSupportRateLimit(req, message);
+        if (rateLimit.limited) {
+            return res.status(429).json({
+                code: 'SUPPORT_RATE_LIMITED',
+                message: 'تم إرسال عدة طلبات دعم بسرعة. انتظر قليلاً ثم حاول مرة أخرى.',
+                retryAfterSeconds: rateLimit.retryAfterSeconds,
+            });
+        }
+
+        const supportRequest = await SupportRequest.create({
+            sourcePage,
+            sessionId: rateLimit.meta.sessionId,
+            ipHash: rateLimit.meta.ipHash,
+            name,
+            email,
+            message,
+            pageContext,
+            lastQuestion,
+            aiStatus,
+        });
+
+        return res.status(201).json({
+            _id: supportRequest._id,
+            status: supportRequest.status,
+            message: 'تم إرسال طلب الدعم بنجاح. سنراجعه من لوحة الإدارة.',
+        });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const listPublicConversations = async (req, res) => {
+    try {
+        const requestedLimit = Number(req.query.limit) || 40;
+        const limit = Math.min(Math.max(requestedLimit, 1), 100);
+        const query = {};
+        const sourcePage = cleanText(req.query.sourcePage, 80);
+        const status = cleanText(req.query.status, 30);
+        const reviewStatus = cleanText(req.query.reviewStatus, 30);
+
+        if (sourcePage && sourcePage !== 'all') query.sourcePage = sourcePage;
+        if (status && status !== 'all') query.status = status;
+        if (reviewStatus && reviewStatus !== 'all') query.reviewStatus = reviewStatus;
+
+        const conversations = await AiPublicConversation.find(query)
+            .sort({ createdAt: -1 })
+            .limit(limit);
+
+        return res.json(conversations.map(serializePublicConversation));
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const updatePublicConversationReview = async (req, res) => {
+    try {
+        if (!isObjectId(req.params.id)) {
+            return res.status(400).json({ message: 'معرّف المحادثة غير صالح' });
+        }
+
+        const reviewStatus = cleanText(req.body.reviewStatus, 40) || 'unreviewed';
+        if (!['unreviewed', 'useful', 'needs_improvement'].includes(reviewStatus)) {
+            return res.status(400).json({ message: 'حالة مراجعة المحادثة غير صالحة' });
+        }
+
+        const conversation = await AiPublicConversation.findByIdAndUpdate(
+            req.params.id,
+            {
+                reviewStatus,
+                adminNote: cleanText(req.body.adminNote, 500),
+                reviewedBy: req.user._id,
+                reviewedAt: new Date(),
+            },
+            { new: true }
+        );
+
+        if (!conversation) return res.status(404).json({ message: 'المحادثة غير موجودة' });
+        return res.json(serializePublicConversation(conversation));
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const listSupportRequests = async (req, res) => {
+    try {
+        const requestedLimit = Number(req.query.limit) || 40;
+        const limit = Math.min(Math.max(requestedLimit, 1), 100);
+        const query = {};
+        const sourcePage = cleanText(req.query.sourcePage, 80);
+        const status = cleanText(req.query.status, 30);
+
+        if (sourcePage && sourcePage !== 'all') query.sourcePage = sourcePage;
+        if (status && status !== 'all') query.status = status;
+
+        const supportRequests = await SupportRequest.find(query)
+            .sort({ createdAt: -1 })
+            .limit(limit);
+
+        return res.json(supportRequests.map(serializeSupportRequest));
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const updateSupportRequest = async (req, res) => {
+    try {
+        if (!isObjectId(req.params.id)) {
+            return res.status(400).json({ message: 'معرّف طلب الدعم غير صالح' });
+        }
+
+        const status = cleanText(req.body.status, 40) || 'new';
+        if (!['new', 'in_progress', 'resolved', 'closed'].includes(status)) {
+            return res.status(400).json({ message: 'حالة طلب الدعم غير صالحة' });
+        }
+
+        const update = {
+            status,
+            adminNote: cleanText(req.body.adminNote, 600),
+            assignedTo: req.user._id,
+        };
+        if (status === 'resolved' || status === 'closed') update.resolvedAt = new Date();
+        if (status === 'new' || status === 'in_progress') update.resolvedAt = null;
+
+        const supportRequest = await SupportRequest.findByIdAndUpdate(req.params.id, update, { new: true });
+        if (!supportRequest) return res.status(404).json({ message: 'طلب الدعم غير موجود' });
+        return res.json(serializeSupportRequest(supportRequest));
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
 const getTutorHistory = async (req, res) => {
     try {
         const access = await ensureStudentLessonAccess(req, res, req.params.lessonId);
@@ -544,4 +919,13 @@ const getTutorHistory = async (req, res) => {
     }
 };
 
-module.exports = { chatWithTutor, getTutorHistory, chatWithPublicAssistant };
+module.exports = {
+    chatWithTutor,
+    getTutorHistory,
+    chatWithPublicAssistant,
+    createSupportRequest,
+    listPublicConversations,
+    updatePublicConversationReview,
+    listSupportRequests,
+    updateSupportRequest,
+};

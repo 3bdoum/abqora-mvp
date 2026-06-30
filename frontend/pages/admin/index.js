@@ -103,6 +103,12 @@ export default function AdminDashboard() {
     const [adForm, setAdForm] = useState(emptyAdForm);
     const [editingAdId, setEditingAdId] = useState('');
     const [savingAd, setSavingAd] = useState(false);
+    const [aiConversations, setAiConversations] = useState([]);
+    const [supportRequests, setSupportRequests] = useState([]);
+    const [aiReviewFilter, setAiReviewFilter] = useState('all');
+    const [supportStatusFilter, setSupportStatusFilter] = useState('all');
+    const [aiAdminNotes, setAiAdminNotes] = useState({});
+    const [supportAdminNotes, setSupportAdminNotes] = useState({});
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -192,12 +198,16 @@ export default function AdminDashboard() {
 
     const fetchData = async () => {
         try {
-            const [subRes, adsRes] = await Promise.all([
+            const [subRes, adsRes, aiRes, supportRes] = await Promise.all([
                 API.get('/submissions'),
                 API.get('/ads').catch(() => ({ data: [] })),
+                API.get('/ai/public-conversations?limit=30').catch(() => ({ data: [] })),
+                API.get('/ai/support-requests?limit=30').catch(() => ({ data: [] })),
             ]);
             setSubmissions(subRes.data);
             setAds(adsRes.data || []);
+            setAiConversations(aiRes.data || []);
+            setSupportRequests(supportRes.data || []);
 
             const coursesRes = await API.get('/courses');
             setCourses(coursesRes.data);
@@ -295,6 +305,45 @@ export default function AdminDashboard() {
             setAds((current) => current.map((item) => (item._id === ad._id ? data : item)));
         } catch (err) {
             setMessage(err.response?.data?.message || 'تعذر تحديث حالة الإعلان');
+        }
+    };
+
+    const refreshAiSupportPanel = async () => {
+        try {
+            const [aiRes, supportRes] = await Promise.all([
+                API.get('/ai/public-conversations?limit=30'),
+                API.get('/ai/support-requests?limit=30'),
+            ]);
+            setAiConversations(aiRes.data || []);
+            setSupportRequests(supportRes.data || []);
+        } catch (err) {
+            setMessage('تعذر تحديث بيانات المساعد والدعم');
+        }
+    };
+
+    const updateAiConversationReview = async (conversationId, reviewStatus) => {
+        try {
+            const { data } = await API.patch(`/ai/public-conversations/${conversationId}`, {
+                reviewStatus,
+                adminNote: aiAdminNotes[conversationId] || '',
+            });
+            setAiConversations((current) => current.map((item) => (item._id === conversationId ? data : item)));
+            setMessage('تم تحديث مراجعة محادثة المساعد.');
+        } catch (err) {
+            setMessage(err.response?.data?.message || 'تعذر تحديث مراجعة محادثة المساعد');
+        }
+    };
+
+    const updateSupportRequestStatus = async (requestId, status) => {
+        try {
+            const { data } = await API.patch(`/ai/support-requests/${requestId}`, {
+                status,
+                adminNote: supportAdminNotes[requestId] || '',
+            });
+            setSupportRequests((current) => current.map((item) => (item._id === requestId ? data : item)));
+            setMessage('تم تحديث طلب الدعم.');
+        } catch (err) {
+            setMessage(err.response?.data?.message || 'تعذر تحديث طلب الدعم');
         }
     };
 
@@ -489,6 +538,29 @@ export default function AdminDashboard() {
     const readyVideoCount = Math.max(courseLessons.length - missingVideoCount, 0);
     const previewVideo = videoRows.find((video) => video.url.trim());
     const previewEmbedUrl = getYoutubeEmbedUrl(previewVideo?.url || '');
+    const filteredAiConversations = aiConversations.filter((item) => (
+        aiReviewFilter === 'all' || item.reviewStatus === aiReviewFilter || item.status === aiReviewFilter
+    ));
+    const filteredSupportRequests = supportRequests.filter((item) => (
+        supportStatusFilter === 'all' || item.status === supportStatusFilter
+    ));
+    const aiSupportStats = {
+        conversations: aiConversations.length,
+        needsImprovement: aiConversations.filter((item) => item.reviewStatus === 'needs_improvement' || item.status === 'error').length,
+        supportNew: supportRequests.filter((item) => item.status === 'new').length,
+        supportOpen: supportRequests.filter((item) => ['new', 'in_progress'].includes(item.status)).length,
+    };
+    const getSupportStatusLabel = (status) => ({
+        new: 'جديد',
+        in_progress: 'قيد المتابعة',
+        resolved: 'تم الحل',
+        closed: 'مغلق',
+    }[status] || status);
+    const getAiReviewLabel = (status) => ({
+        unreviewed: 'غير مراجع',
+        useful: 'مفيد',
+        needs_improvement: 'يحتاج تحسين',
+    }[status] || status);
 
     return (
         <Layout>
@@ -525,6 +597,12 @@ export default function AdminDashboard() {
                         className={`tab-btn ${activeTab === 'ads' ? 'active' : ''}`}
                     >
                         إعلانات الصفحة الرئيسية 📣 ({ads.filter((ad) => ad.active).length} نشط)
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('ai-support')}
+                        className={`tab-btn ${activeTab === 'ai-support' ? 'active' : ''}`}
+                    >
+                        المساعد والدعم 🤖 ({aiSupportStats.supportOpen} مفتوح)
                     </button>
                 </div>
 
@@ -770,6 +848,162 @@ export default function AdminDashboard() {
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {/* AI + Support Tab */}
+                {activeTab === 'ai-support' && (
+                    <div className="ai-support-admin">
+                        <div className="card ai-support-hero">
+                            <div>
+                                <span className="eyebrow">تشغيل إنتاجي آمن</span>
+                                <h2>المساعد الذكي وطلبات الدعم 🤖</h2>
+                                <p>راقب جودة إجابات Gemini، طلبات الدعم القادمة من الصفحة العامة، وأغلق الحلقة عندما يحتاج المستخدم لمساعدة بشرية.</p>
+                            </div>
+                            <button type="button" className="small-button secondary" onClick={refreshAiSupportPanel}>
+                                تحديث البيانات
+                            </button>
+                        </div>
+
+                        <div className="ai-support-stat-grid">
+                            <div className="card">
+                                <span>💬</span>
+                                <strong>{aiSupportStats.conversations}</strong>
+                                <p>محادثات عامة محفوظة</p>
+                            </div>
+                            <div className="card">
+                                <span>🧪</span>
+                                <strong>{aiSupportStats.needsImprovement}</strong>
+                                <p>تحتاج مراجعة أو تحسين</p>
+                            </div>
+                            <div className="card">
+                                <span>📩</span>
+                                <strong>{aiSupportStats.supportNew}</strong>
+                                <p>طلبات دعم جديدة</p>
+                            </div>
+                            <div className="card">
+                                <span>🟢</span>
+                                <strong>{aiSupportStats.supportOpen}</strong>
+                                <p>طلبات مفتوحة</p>
+                            </div>
+                        </div>
+
+                        <div className="ai-support-columns">
+                            <section className="card">
+                                <div className="section-heading compact-heading">
+                                    <div>
+                                        <span className="eyebrow">جودة المساعد</span>
+                                        <h2>آخر محادثات AI</h2>
+                                    </div>
+                                    <label className="compact-filter">
+                                        فلتر
+                                        <select value={aiReviewFilter} onChange={(event) => setAiReviewFilter(event.target.value)}>
+                                            <option value="all">الكل</option>
+                                            <option value="unreviewed">غير مراجع</option>
+                                            <option value="useful">مفيد</option>
+                                            <option value="needs_improvement">يحتاج تحسين</option>
+                                            <option value="error">أخطاء المزود</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                {filteredAiConversations.length === 0 ? (
+                                    <div className="empty-state-card">
+                                        <strong>لا توجد محادثات بهذا الفلتر.</strong>
+                                        <p>ستظهر هنا المحادثات العامة بعد استخدام الزوار للمساعد.</p>
+                                    </div>
+                                ) : (
+                                    <div className="ai-admin-list">
+                                        {filteredAiConversations.map((conversation) => (
+                                            <article key={conversation._id} className={`ai-admin-item status-${conversation.status}`}>
+                                                <div className="ai-admin-item-header">
+                                                    <span className="tag">{conversation.sourcePage}</span>
+                                                    <small>{new Date(conversation.createdAt).toLocaleString('ar-EG')}</small>
+                                                </div>
+                                                <p><strong>السؤال:</strong> {conversation.userMessage}</p>
+                                                <p><strong>الإجابة:</strong> {conversation.assistantMessage || conversation.errorCode || 'لا توجد إجابة محفوظة'}</p>
+                                                <div className="ai-admin-meta">
+                                                    <span>{conversation.provider || 'provider'} · {conversation.model || 'model'}</span>
+                                                    <span>{getAiReviewLabel(conversation.reviewStatus)}</span>
+                                                </div>
+                                                <textarea
+                                                    value={aiAdminNotes[conversation._id] ?? conversation.adminNote ?? ''}
+                                                    onChange={(event) => setAiAdminNotes({ ...aiAdminNotes, [conversation._id]: event.target.value })}
+                                                    placeholder="ملاحظة داخلية لتحسين المساعد..."
+                                                    rows="2"
+                                                />
+                                                <div className="ai-admin-actions">
+                                                    <button type="button" className="small-button secondary" onClick={() => updateAiConversationReview(conversation._id, 'useful')}>
+                                                        مفيد
+                                                    </button>
+                                                    <button type="button" className="small-button secondary" onClick={() => updateAiConversationReview(conversation._id, 'needs_improvement')}>
+                                                        يحتاج تحسين
+                                                    </button>
+                                                </div>
+                                            </article>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
+
+                            <section className="card">
+                                <div className="section-heading compact-heading">
+                                    <div>
+                                        <span className="eyebrow">التواصل البشري</span>
+                                        <h2>طلبات الدعم</h2>
+                                    </div>
+                                    <label className="compact-filter">
+                                        الحالة
+                                        <select value={supportStatusFilter} onChange={(event) => setSupportStatusFilter(event.target.value)}>
+                                            <option value="all">الكل</option>
+                                            <option value="new">جديد</option>
+                                            <option value="in_progress">قيد المتابعة</option>
+                                            <option value="resolved">تم الحل</option>
+                                            <option value="closed">مغلق</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                {filteredSupportRequests.length === 0 ? (
+                                    <div className="empty-state-card">
+                                        <strong>لا توجد طلبات دعم بهذا الفلتر.</strong>
+                                        <p>عند إرسال مستخدم لرسالة من المساعد ستظهر هنا.</p>
+                                    </div>
+                                ) : (
+                                    <div className="ai-admin-list">
+                                        {filteredSupportRequests.map((requestItem) => (
+                                            <article key={requestItem._id} className={`support-admin-item status-${requestItem.status}`}>
+                                                <div className="ai-admin-item-header">
+                                                    <span className="tag">{getSupportStatusLabel(requestItem.status)}</span>
+                                                    <small>{new Date(requestItem.createdAt).toLocaleString('ar-EG')}</small>
+                                                </div>
+                                                <h3>{requestItem.name || 'زائر بدون اسم'}</h3>
+                                                {requestItem.email ? <a href={`mailto:${requestItem.email}`}>{requestItem.email}</a> : <small>لا يوجد بريد للمتابعة</small>}
+                                                <p>{requestItem.message}</p>
+                                                {requestItem.lastQuestion ? <small>آخر سؤال: {requestItem.lastQuestion}</small> : null}
+                                                <textarea
+                                                    value={supportAdminNotes[requestItem._id] ?? requestItem.adminNote ?? ''}
+                                                    onChange={(event) => setSupportAdminNotes({ ...supportAdminNotes, [requestItem._id]: event.target.value })}
+                                                    placeholder="ملاحظة داخلية أو نتيجة المتابعة..."
+                                                    rows="2"
+                                                />
+                                                <div className="ai-admin-actions">
+                                                    <button type="button" className="small-button secondary" onClick={() => updateSupportRequestStatus(requestItem._id, 'in_progress')}>
+                                                        متابعة
+                                                    </button>
+                                                    <button type="button" className="small-button btn-success" onClick={() => updateSupportRequestStatus(requestItem._id, 'resolved')}>
+                                                        تم الحل
+                                                    </button>
+                                                    <button type="button" className="small-button secondary" onClick={() => updateSupportRequestStatus(requestItem._id, 'closed')}>
+                                                        إغلاق
+                                                    </button>
+                                                </div>
+                                            </article>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
                         </div>
                     </div>
                 )}

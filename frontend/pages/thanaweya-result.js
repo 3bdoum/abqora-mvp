@@ -12,6 +12,7 @@ const scientificCutoffs2024Url = 'https://tansik.digital.gov.eg/application/Cert
 const literaryCutoffs2024Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitA2024.htm';
 const supportEmail = 'support@abqora.com';
 const aiAgentEndpoint = (process.env.NEXT_PUBLIC_AI_AGENT_ENDPOINT || `${API_BASE_URL.replace(/\/$/, '')}/ai/public-chat`).replace(/\/$/, '');
+const aiSupportEndpoint = `${API_BASE_URL.replace(/\/$/, '')}/ai/support-requests`;
 
 const degreeSystems = [
     {
@@ -149,6 +150,16 @@ const getMessageHistoryForAi = (messages) => messages
         text: message.text,
     }));
 
+const getAssistantSessionId = () => {
+    if (typeof window === 'undefined') return '';
+    const storageKey = 'abqora-public-ai-session';
+    const current = window.localStorage.getItem(storageKey);
+    if (current) return current;
+    const next = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+    window.localStorage.setItem(storageKey, next);
+    return next;
+};
+
 const formatPercent = (value) => `${value.toFixed(1)}%`;
 
 const getPredictedCutoff = (college) => {
@@ -204,6 +215,10 @@ export default function ThanaweyaResultPage() {
     const [assistantMessages, setAssistantMessages] = useState(assistantStarterMessages);
     const [isAssistantThinking, setIsAssistantThinking] = useState(false);
     const [assistantMode, setAssistantMode] = useState('advanced');
+    const [isSupportFormOpen, setIsSupportFormOpen] = useState(false);
+    const [supportForm, setSupportForm] = useState({ name: '', email: '', message: '' });
+    const [isSupportSending, setIsSupportSending] = useState(false);
+    const [supportStatus, setSupportStatus] = useState('');
 
     const selectedSystem = degreeSystems.find((system) => system.id === degreeSystemId) || degreeSystems[0];
     const selectedTrack = admissionTracks.find((track) => track.id === activeTrackId) || admissionTracks[0];
@@ -338,11 +353,15 @@ ${rows}
         try {
             const response = await fetch(aiAgentEndpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-abqora-session-id': getAssistantSessionId(),
+                },
                 body: JSON.stringify({
                     message: trimmedQuestion,
                     pageContext: aiPageContext,
                     history: historyForAi,
+                    sourcePage: 'thanaweya-result',
                 }),
             });
             const data = await response.json().catch(() => ({}));
@@ -374,6 +393,10 @@ ${rows}
                 ? 'أستطيع العمل كمساعد ذكي عام مثل ChatGPT، لكن يجب تفعيل Gemini في Backend على Render أولًا: AI_PROVIDER=gemini ثم GEMINI_API_KEY. بعد التفعيل سأجيب على الأسئلة العامة وليس فقط بيانات الصفحة.'
                 : error.code === 'AI_PROVIDER_NOT_SUPPORTED'
                     ? 'إعداد AI_PROVIDER في Render غير مدعوم حالياً. استخدم gemini كخيار أساسي، أو openai كخيار بديل.'
+                : error.code === 'AI_RATE_LIMITED'
+                    ? 'وصلت إلى الحد المؤقت للمحادثة حتى نحافظ على سرعة الخدمة للجميع. انتظر قليلاً أو أرسل طلب دعم لو المشكلة مستعجلة.'
+                : error.code === 'AI_MESSAGE_TOO_LONG'
+                    ? 'رسالتك طويلة جداً. اختصر السؤال في نقطة واحدة وسأساعدك خطوة بخطوة.'
                 : error.code === 'AI_PROVIDER_ERROR'
                     ? 'الخادم متصل الآن بالمساعد، لكن مزود الذكاء الاصطناعي رفض الطلب. راجع GEMINI_API_KEY أو OPENAI_API_KEY في Render، وتأكد من الحصة/الفوترة واسم النموذج مثل gemini-3.1-flash-lite.'
                     : 'أحاول الاتصال بالمساعد المتقدم، لكن Route الخادم غير متاح الآن. غالبًا يحتاج Backend في Render إلى Manual Deploy لآخر commit. بعد نشر الخادم سأستطيع الإجابة على أي سؤال.';
@@ -389,11 +412,11 @@ ${rows}
                         ? 'advanced-ai-not-configured'
                         : error.code === 'AI_PROVIDER_NOT_SUPPORTED'
                             ? 'advanced-ai-provider-error'
+                        : error.code === 'AI_RATE_LIMITED'
+                            ? 'ai-rate-limited'
                         : error.code === 'AI_PROVIDER_ERROR'
                             ? 'advanced-ai-provider-error'
                             : 'ai-unavailable',
-                    actionLabel: 'راسل الدعم',
-                    actionHref: supportMailHref,
                 },
             ].slice(-12));
         } finally {
@@ -417,6 +440,68 @@ ${rows}
     const handleAssistantSubmit = (event) => {
         event.preventDefault();
         askAssistantQuestion(assistantInput);
+    };
+
+    const openSupportForm = () => {
+        const lastUserMessage = [...assistantMessages].reverse().find((message) => message.role === 'user');
+        setSupportForm((current) => ({
+            ...current,
+            message: current.message || lastUserMessage?.text || '',
+        }));
+        setSupportStatus('');
+        setIsSupportFormOpen(true);
+    };
+
+    const submitSupportRequest = async (event) => {
+        event.preventDefault();
+        const trimmedMessage = supportForm.message.trim();
+        if (trimmedMessage.length < 8) {
+            setSupportStatus('اكتب وصفاً أوضح للمشكلة أولاً.');
+            return;
+        }
+
+        const lastUserMessage = [...assistantMessages].reverse().find((message) => message.role === 'user');
+        setIsSupportSending(true);
+        setSupportStatus('');
+        try {
+            const response = await fetch(aiSupportEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-abqora-session-id': getAssistantSessionId(),
+                },
+                body: JSON.stringify({
+                    name: supportForm.name,
+                    email: supportForm.email,
+                    message: trimmedMessage,
+                    pageContext: aiPageContext,
+                    sourcePage: 'thanaweya-result',
+                    lastQuestion: lastUserMessage?.text || '',
+                    aiStatus: assistantMode,
+                }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.message || 'تعذر إرسال طلب الدعم الآن.');
+            }
+
+            setSupportStatus('تم إرسال طلب الدعم بنجاح ✅');
+            setSupportForm({ name: '', email: '', message: '' });
+            setAssistantMessages((currentMessages) => [
+                ...currentMessages,
+                {
+                    role: 'assistant',
+                    icon: '📩',
+                    title: 'تم إرسال طلب الدعم',
+                    text: 'وصلت رسالتك إلى لوحة الإدارة. سنستخدم سياق الصفحة لمساعدتك بشكل أسرع.',
+                    source: 'support-request-created',
+                },
+            ].slice(-12));
+        } catch (error) {
+            setSupportStatus(error.message || 'تعذر إرسال طلب الدعم الآن.');
+        } finally {
+            setIsSupportSending(false);
+        }
     };
 
     const handleSystemChange = (systemId) => {
@@ -861,6 +946,10 @@ ${rows}
                                                             ? 'المساعد المتقدم يحتاج تفعيل GEMINI_API_KEY'
                                                             : message.source === 'advanced-ai-provider-error'
                                                                 ? 'مزود الذكاء الاصطناعي رفض الطلب'
+                                                                : message.source === 'ai-rate-limited'
+                                                                    ? 'حماية مؤقتة من كثرة الرسائل'
+                                                                    : message.source === 'support-request-created'
+                                                                        ? 'طلب دعم محفوظ'
                                                                 : message.source?.startsWith('advanced-ai')
                                                                     ? 'إجابة من المساعد المتقدم'
                                                                     : message.source === 'ai-unavailable'
@@ -899,12 +988,53 @@ ${rows}
                                 ))}
                             </div>
 
+                            {isSupportFormOpen ? (
+                                <form className="result-ai-support-form" onSubmit={submitSupportRequest}>
+                                    <div>
+                                        <strong>إرسال طلب دعم</strong>
+                                        <small>اكتب المشكلة فقط. الاسم والبريد اختياريان للمتابعة.</small>
+                                    </div>
+                                    <div className="support-form-grid">
+                                        <input
+                                            value={supportForm.name}
+                                            onChange={(event) => setSupportForm({ ...supportForm, name: event.target.value })}
+                                            placeholder="الاسم اختياري"
+                                            maxLength="80"
+                                        />
+                                        <input
+                                            value={supportForm.email}
+                                            onChange={(event) => setSupportForm({ ...supportForm, email: event.target.value })}
+                                            placeholder="البريد اختياري"
+                                            maxLength="160"
+                                        />
+                                    </div>
+                                    <textarea
+                                        value={supportForm.message}
+                                        onChange={(event) => setSupportForm({ ...supportForm, message: event.target.value })}
+                                        placeholder="اشرح المشكلة أو السؤال الذي يحتاج متابعة..."
+                                        rows="3"
+                                        maxLength="1200"
+                                        required
+                                    />
+                                    {supportStatus ? <small className="support-status">{supportStatus}</small> : null}
+                                    <div className="support-form-actions">
+                                        <button type="button" className="small-button secondary" onClick={() => setIsSupportFormOpen(false)}>
+                                            إلغاء
+                                        </button>
+                                        <button type="submit" className="small-button" disabled={isSupportSending}>
+                                            {isSupportSending ? 'جاري الإرسال...' : 'إرسال للدعم'}
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : null}
+
                             <form className="result-ai-form" onSubmit={handleAssistantSubmit}>
                                 <input
                                     value={assistantInput}
                                     onChange={(event) => setAssistantInput(event.target.value)}
                                     placeholder="اسأل عن النتيجة، النسبة، الكليات، عبقورا..."
                                     aria-label="اكتب سؤالًا لمساعد عبقورا"
+                                    maxLength="1000"
                                     disabled={isAssistantThinking}
                                 />
                                 <button type="submit" disabled={isAssistantThinking}>
@@ -916,7 +1046,7 @@ ${rows}
                         <div className="result-ai-actions">
                             <a href="#result-calculator" onClick={() => askAssistantQuestion(quickTopicQuestions.calculator)}>الحاسبة</a>
                             <a href="#result-analysis" onClick={() => askAssistantQuestion(quickTopicQuestions.analysis)}>التحليل</a>
-                            <a href={supportMailHref}>رسالة للدعم</a>
+                            <button type="button" onClick={openSupportForm}>رسالة للدعم</button>
                             <button type="button" onClick={resetAssistantConversation}>محادثة جديدة</button>
                         </div>
                     </aside>

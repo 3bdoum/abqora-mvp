@@ -20,6 +20,8 @@ const Quiz = require('../models/quizModel');
 const Submission = require('../models/submissionModel');
 const Certificate = require('../models/certificateModel');
 const AiTutorExchange = require('../models/aiTutorExchangeModel');
+const AiPublicConversation = require('../models/aiPublicConversationModel');
+const SupportRequest = require('../models/supportRequestModel');
 const Advertisement = require('../models/advertisementModel');
 const { backfillLegacyProgress, seedData } = require('../utils/seed');
 
@@ -33,7 +35,7 @@ const clearDatabase = async () => {
         User.deleteMany({}), Course.deleteMany({}), Lesson.deleteMany({}), Progress.deleteMany({}),
         TeacherStudentAssignment.deleteMany({}), ProgressAuditLog.deleteMany({}), Quiz.deleteMany({}),
         Submission.deleteMany({}), Certificate.deleteMany({}), AiTutorExchange.deleteMany({}),
-        Advertisement.deleteMany({}),
+        AiPublicConversation.deleteMany({}), SupportRequest.deleteMany({}), Advertisement.deleteMany({}),
     ]);
 };
 
@@ -449,6 +451,102 @@ test('public AI assistant answers general questions through Gemini provider', as
     }
 });
 
+test('public AI assistant rate limits repeated public sessions', async () => {
+    const previousProvider = process.env.AI_PROVIDER;
+    const previousGeminiKey = process.env.GEMINI_API_KEY;
+    const previousRateLimit = process.env.PUBLIC_AI_RATE_LIMIT_MAX;
+    const previousRateWindow = process.env.PUBLIC_AI_RATE_LIMIT_WINDOW_MS;
+    const previousFetch = global.fetch;
+    process.env.AI_PROVIDER = 'gemini';
+    process.env.GEMINI_API_KEY = 'test-gemini-key';
+    process.env.PUBLIC_AI_RATE_LIMIT_MAX = '1';
+    process.env.PUBLIC_AI_RATE_LIMIT_WINDOW_MS = '60000';
+    global.fetch = async () => ({
+        ok: true,
+        json: async () => ({
+            candidates: [{ content: { parts: [{ text: 'إجابة قصيرة' }] } }],
+        }),
+    });
+
+    try {
+        const sessionHeader = { 'x-abqora-session-id': 'rate-limit-session-unique' };
+        const firstResponse = await request(app)
+            .post('/api/ai/public-chat')
+            .set(sessionHeader)
+            .send({ message: 'سؤال أول عن عبقورا' });
+        assert.equal(firstResponse.status, 200);
+
+        const limitedResponse = await request(app)
+            .post('/api/ai/public-chat')
+            .set(sessionHeader)
+            .send({ message: 'سؤال ثاني عن عبقورا' });
+        assert.equal(limitedResponse.status, 429);
+        assert.equal(limitedResponse.body.code, 'AI_RATE_LIMITED');
+    } finally {
+        if (previousProvider) process.env.AI_PROVIDER = previousProvider;
+        else delete process.env.AI_PROVIDER;
+        if (previousGeminiKey) process.env.GEMINI_API_KEY = previousGeminiKey;
+        else delete process.env.GEMINI_API_KEY;
+        if (previousRateLimit) process.env.PUBLIC_AI_RATE_LIMIT_MAX = previousRateLimit;
+        else delete process.env.PUBLIC_AI_RATE_LIMIT_MAX;
+        if (previousRateWindow) process.env.PUBLIC_AI_RATE_LIMIT_WINDOW_MS = previousRateWindow;
+        else delete process.env.PUBLIC_AI_RATE_LIMIT_WINDOW_MS;
+        global.fetch = previousFetch;
+    }
+});
+
+test('admin can review public AI conversation logs', async () => {
+    const data = await setupScenario();
+    const previousProvider = process.env.AI_PROVIDER;
+    const previousGeminiKey = process.env.GEMINI_API_KEY;
+    const previousFetch = global.fetch;
+    process.env.AI_PROVIDER = 'gemini';
+    process.env.GEMINI_API_KEY = 'test-gemini-key';
+    global.fetch = async () => ({
+        ok: true,
+        json: async () => ({
+            candidates: [{ content: { parts: [{ text: 'اقرأ التحليل ثم اختر بدائل مناسبة.' }] } }],
+        }),
+    });
+
+    try {
+        await request(app)
+            .post('/api/ai/public-chat')
+            .set({ 'x-abqora-session-id': 'admin-log-session-unique' })
+            .send({
+                message: 'كيف أقرأ تحليل الكليات؟',
+                sourcePage: 'thanaweya-result',
+                pageContext: 'النسبة الحالية 82%',
+            });
+
+        const blocked = await request(app)
+            .get('/api/ai/public-conversations')
+            .set(auth(data.tokens.teacher));
+        assert.equal(blocked.status, 403);
+
+        const listResponse = await request(app)
+            .get('/api/ai/public-conversations?sourcePage=thanaweya-result')
+            .set(auth(data.tokens.admin));
+        assert.equal(listResponse.status, 200);
+        assert.equal(listResponse.body.length, 1);
+        assert.equal(listResponse.body[0].provider, 'gemini');
+        assert.equal(listResponse.body[0].sourcePage, 'thanaweya-result');
+
+        const reviewResponse = await request(app)
+            .patch(`/api/ai/public-conversations/${listResponse.body[0]._id}`)
+            .set(auth(data.tokens.admin))
+            .send({ reviewStatus: 'useful', adminNote: 'رد مناسب للصفحة' });
+        assert.equal(reviewResponse.status, 200);
+        assert.equal(reviewResponse.body.reviewStatus, 'useful');
+    } finally {
+        if (previousProvider) process.env.AI_PROVIDER = previousProvider;
+        else delete process.env.AI_PROVIDER;
+        if (previousGeminiKey) process.env.GEMINI_API_KEY = previousGeminiKey;
+        else delete process.env.GEMINI_API_KEY;
+        global.fetch = previousFetch;
+    }
+});
+
 test('public AI assistant answers general questions through OpenAI provider', async () => {
     const previousProvider = process.env.AI_PROVIDER;
     const previousApiKey = process.env.OPENAI_API_KEY;
@@ -491,6 +589,42 @@ test('public AI assistant answers general questions through OpenAI provider', as
         }
         global.fetch = previousFetch;
     }
+});
+
+test('public support handoff creates requests and admin can manage them', async () => {
+    const data = await setupScenario();
+
+    const created = await request(app)
+        .post('/api/ai/support-requests')
+        .set({ 'x-abqora-session-id': 'support-session-unique' })
+        .send({
+            name: 'Visitor',
+            email: 'visitor@example.com',
+            message: 'أحتاج مساعدة في قراءة تحليل الكليات بعد إدخال النسبة.',
+            sourcePage: 'thanaweya-result',
+            lastQuestion: 'كيف أختار كلية مناسبة؟',
+            aiStatus: 'advanced',
+        });
+    assert.equal(created.status, 201);
+    assert.equal(created.body.status, 'new');
+
+    const unauthorized = await request(app).get('/api/ai/support-requests');
+    assert.equal(unauthorized.status, 401);
+
+    const listResponse = await request(app)
+        .get('/api/ai/support-requests?status=new')
+        .set(auth(data.tokens.admin));
+    assert.equal(listResponse.status, 200);
+    assert.equal(listResponse.body.length, 1);
+    assert.equal(listResponse.body[0].email, 'visitor@example.com');
+
+    const updated = await request(app)
+        .patch(`/api/ai/support-requests/${created.body._id}`)
+        .set(auth(data.tokens.admin))
+        .send({ status: 'resolved', adminNote: 'تمت المتابعة' });
+    assert.equal(updated.status, 200);
+    assert.equal(updated.body.status, 'resolved');
+    assert.equal(updated.body.adminNote, 'تمت المتابعة');
 });
 
 test('AI tutor answers available lessons and stores the exchange', async () => {

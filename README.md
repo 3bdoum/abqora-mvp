@@ -99,6 +99,8 @@ FRONTEND_URL=https://3bdoum.github.io/abqora-mvp
 AI_PROVIDER=gemini
 GEMINI_API_KEY=<your Google AI Studio API key>
 GEMINI_MODEL=gemini-3.1-flash-lite
+PUBLIC_AI_RATE_LIMIT_MAX=8
+SUPPORT_RATE_LIMIT_MAX=4
 ```
 
 After deploying backend code, run `npm run migrate:courses` once from the Render Shell to update course and lesson records without creating demo users. Run the seed script only for demo/test databases, and never after real users exist. In production it is blocked unless `ALLOW_PRODUCTION_SEED=true` is set intentionally.
@@ -237,6 +239,16 @@ This endpoint can answer general questions while using the current page context 
 4. Ensure the GitHub Pages build uses the deployed backend URL in `.github/workflows/pages.yml` as `NEXT_PUBLIC_API_BASE_URL`.
 
 If the backend AI provider is unavailable, the frontend keeps the chat UI available but shows a clear setup/connection message instead of pretending to answer broadly without AI.
+
+Production safety controls:
+
+- `PUBLIC_AI_RATE_LIMIT_MAX` controls public assistant requests per session/IP window; default is `8`.
+- `PUBLIC_AI_RATE_LIMIT_WINDOW_MS` controls the public assistant rate-limit window; default is `60000`.
+- `PUBLIC_AI_REPEAT_LIMIT` limits repeated identical messages; default is `3`.
+- `SUPPORT_RATE_LIMIT_MAX` controls public support handoff submissions per session/IP window; default is `4`.
+- `SUPPORT_RATE_LIMIT_WINDOW_MS` controls the support handoff window; default is `600000`.
+- Public AI conversations are logged with a hashed session/IP reference, provider/model, status, and admin review status.
+- Public users can send a support request from the assistant popup. Admins review support tickets and AI answer quality from **Admin > المساعد والدعم**.
 
 ## Roles and sample accounts
 

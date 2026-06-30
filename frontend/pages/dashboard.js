@@ -354,6 +354,30 @@ export default function Dashboard() {
                         </div>
                     )}
 
+                    <div className="student-lesson-flow-card">
+                        <div className="section-heading compact-heading">
+                            <div>
+                                <span className="eyebrow">أبسط طريقة للتعلم اليوم</span>
+                                <h2>درس واحد فقط، خطوة بخطوة</h2>
+                            </div>
+                            {activeCourse && (
+                                <button
+                                    type="button"
+                                    className="small-button secondary"
+                                    onClick={() => router.push({ pathname: '/course', query: { id: activeCourse._id } })}
+                                >
+                                    فتح الدرس
+                                </button>
+                            )}
+                        </div>
+                        <div className="student-flow-steps">
+                            <div><span>🎬</span><strong>شاهد الفيديو</strong><p>افهم الفكرة قبل التطبيق.</p></div>
+                            <div><span>🧩</span><strong>جرّب التمرين</strong><p>طبّق على Code.org من داخل الدرس.</p></div>
+                            <div><span>🤖</span><strong>اسأل المساعد</strong><p>اطلب تلميحاً إذا توقفت.</p></div>
+                            <div><span>✅</span><strong>أرسل للمعلم</strong><p>المعلم يعتمد الإنجاز ويفتح التالي.</p></div>
+                        </div>
+                    </div>
+
                     <details className="simple-disclosure student-more-disclosure">
                         <summary>
                             <span>المزيد عن تقدمي</span>
