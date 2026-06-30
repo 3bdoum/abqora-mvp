@@ -115,6 +115,171 @@ const admissionTracks = [
     },
 ];
 
+const offlineAssistantKnowledge = [
+    {
+        id: 'official-result',
+        icon: '🔗',
+        title: 'الرابط الرسمي للنتيجة',
+        keywords: ['نتيجة', 'الرابط', 'رسمي', 'وزارة', 'g12', 'رقم الجلوس', 'seat number', 'result', 'official'],
+        answer: 'افتح النتيجة من الرابط الرسمي فقط. عبقورا لا يطلب رقم الجلوس ولا يعرض النتيجة داخل الموقع، حتى نحافظ على الخصوصية ونتجنب أي مصدر غير موثوق.',
+        actionLabel: 'فتح الرابط الرسمي',
+        actionHref: officialResultUrl,
+        external: true,
+    },
+    {
+        id: 'calculator',
+        icon: '🧮',
+        title: 'حاسبة النسبة',
+        keywords: ['حاسبة', 'احسب', 'النسبة', 'مجموع', 'درجة', '320', '410', 'percentage', 'calculator', 'score'],
+        answer: 'اختر النظام الصحيح أولًا: النظام الجديد من 320 درجة، أو النظام القديم من 410 درجة. اكتب مجموع الطالب فقط، وستظهر النسبة مباشرة داخل الصفحة بدون حفظ البيانات.',
+        actionLabel: 'اذهب إلى الحاسبة',
+        actionHref: '#result-calculator',
+    },
+    {
+        id: 'analysis',
+        icon: '📊',
+        title: 'تحليل الكليات',
+        keywords: ['تحليل', 'توقع', 'كلية', 'كليات', 'تنسيق', 'طب', 'هندسة', 'حاسبات', 'ادبي', 'علمي', 'college', 'prediction'],
+        answer: 'تحليل الكليات يقارن النسبة ببيانات آخر عامين من صفحات التنسيق الرسمية، ثم يعطي قراءة إرشادية: فرصة قوية، قريبة، طموحة، أو خطة بديلة. هذا ليس قبولًا رسميًا.',
+        actionLabel: 'شاهد التحليل',
+        actionHref: '#result-analysis',
+    },
+    {
+        id: 'accuracy',
+        icon: '⚠️',
+        title: 'دقة التوقع',
+        keywords: ['دقة', 'مضمون', 'اكيد', 'قبول', 'نهائي', 'accurate', 'guarantee', 'admission'],
+        answer: 'التوقع إرشادي فقط. الحدود الدنيا النهائية تصدر من مكتب التنسيق، وقد تتغير حسب عدد الطلاب والرغبات والأماكن المتاحة. استخدم التحليل كخريطة تفكير وليس كقرار نهائي.',
+        actionLabel: 'مصدر التنسيق',
+        actionHref: tansikUrl,
+        external: true,
+    },
+    {
+        id: 'privacy',
+        icon: '🛡️',
+        title: 'الخصوصية',
+        keywords: ['خصوصية', 'بيانات', 'تخزين', 'رقم الجلوس', 'امان', 'privacy', 'data', 'secure'],
+        answer: 'هذه الصفحة لا تخزن رقم الجلوس ولا المجموع. الحساب والتحليل يحدثان داخل المتصفح فقط. الروابط الرسمية تفتح خارج عبقورا.',
+        actionLabel: 'اقرأ التنبيه',
+        actionHref: '#result-analysis',
+    },
+    {
+        id: 'tracks',
+        icon: '🎓',
+        title: 'اختيار الشعبة',
+        keywords: ['علمي علوم', 'علمي رياضة', 'ادبي', 'شعبة', 'مسار', 'track', 'science', 'math', 'literature'],
+        answer: 'اختر الشعبة الأقرب للطالب: علمي علوم للمسارات الصحية، علمي رياضة للهندسة والحاسبات، وأدبي للألسن والإعلام والاقتصاد والتجارة. بعدها يتغير التحليل تلقائيًا.',
+        actionLabel: 'غيّر الشعبة',
+        actionHref: '#result-calculator',
+    },
+    {
+        id: 'abqora-courses',
+        icon: '👧',
+        title: 'منصة عبقورا',
+        keywords: ['عبقورا', 'كورسات', 'برمجة', 'اطفال', 'code.org', 'دروس', 'teacher', 'parent', 'student', 'abqora'],
+        answer: 'عبقورا منصة عربية للأطفال لتعلم البرمجة بخطوات بسيطة: فيديو شرح قبل التطبيق، تدريب عملي، متابعة من المعلم، ولوحة مختصرة لولي الأمر.',
+        actionLabel: 'تعرف على عبقورا',
+        actionHref: '/',
+    },
+    {
+        id: 'support',
+        icon: '💬',
+        title: 'الدعم والتواصل',
+        keywords: ['دعم', 'تواصل', 'مساعدة', 'مشكلة', 'ايميل', 'support', 'contact', 'help'],
+        answer: 'لو السؤال يحتاج مراجعة بشرية، أرسل رسالة للدعم موضحًا المشكلة: الرابط الرسمي، الحاسبة، تحليل الكليات، أو حساب عبقورا.',
+        actionLabel: 'راسل الدعم',
+        actionHref: `mailto:${supportEmail}?subject=${encodeURIComponent('طلب دعم من صفحة الثانوية العامة')}`,
+    },
+    {
+        id: 'next-steps',
+        icon: '🚀',
+        title: 'ماذا أفعل بعد النتيجة؟',
+        keywords: ['بعد النتيجة', 'ماذا افعل', 'اختار', 'رغبات', 'مهارة', 'خطوة', 'next', 'career'],
+        answer: 'بعد النتيجة: احسب النسبة، اختر الشعبة، اقرأ المسارات القريبة، ثم رتّب الرغبات حسب الميول وفرص العمل والمحافظة. ابدأ مهارة عملية مبكرًا بدل انتظار التنسيق فقط.',
+        actionLabel: 'شاهد فيديو الفكرة',
+        actionHref: '#result-video',
+    },
+];
+
+const assistantStarterMessages = [
+    {
+        role: 'assistant',
+        icon: '🤖',
+        title: 'مساعد عبقورا offline',
+        text: 'اسألني عن عبقورا، نتيجة الثانوية، الحاسبة، تحليل الكليات، الخصوصية، أو ماذا تفعل بعد النتيجة. أعمل داخل الصفحة بدون API.',
+        source: 'offline-context',
+    },
+];
+
+const assistantQuickQuestions = [
+    'كيف أحسب النسبة؟',
+    'هل التوقع مضمون؟',
+    'ما الفرق بين 320 و410؟',
+    'ماذا أفعل بعد النتيجة؟',
+];
+
+const quickTopicQuestions = {
+    start: 'ماذا يستطيع مساعد عبقورا أن يفعل؟',
+    calculator: 'كيف أحسب النسبة؟',
+    analysis: 'كيف أقرأ تحليل الكليات؟',
+    support: 'كيف أتواصل مع الدعم؟',
+};
+
+const normalizeAssistantText = (value = '') => value
+    .toString()
+    .toLowerCase()
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/[^\u0600-\u06FFa-z0-9\s.]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const buildOfflineAssistantAnswer = (question, context) => {
+    const normalizedQuestion = normalizeAssistantText(question);
+    const questionTokens = normalizedQuestion.split(' ').filter((token) => token.length > 1);
+
+    const rankedMatches = offlineAssistantKnowledge
+        .map((item) => {
+            const normalizedKeywords = item.keywords.map(normalizeAssistantText);
+            const keywordScore = normalizedKeywords.reduce((score, keyword) => {
+                if (!keyword) return score;
+                if (normalizedQuestion.includes(keyword)) return score + 4;
+                const keywordTokens = keyword.split(' ');
+                return score + keywordTokens.filter((token) => questionTokens.includes(token)).length;
+            }, 0);
+            const titleScore = normalizeAssistantText(item.title)
+                .split(' ')
+                .filter((token) => questionTokens.includes(token))
+                .length;
+            return { ...item, score: keywordScore + titleScore };
+        })
+        .sort((first, second) => second.score - first.score);
+
+    const bestMatch = rankedMatches[0]?.score > 0 ? rankedMatches[0] : offlineAssistantKnowledge.find((item) => item.id === 'next-steps');
+
+    const dynamicDetails = {
+        'calculator': context.percentage
+            ? `\n\nحسب الأرقام الحالية: النسبة ${context.percentage}%، والنظام المختار هو ${context.selectedSystem.label} من ${context.selectedSystem.total} درجة.`
+            : `\n\nالنظام المختار الآن: ${context.selectedSystem.label} من ${context.selectedSystem.total} درجة. اكتب المجموع لتظهر النسبة.`,
+        'analysis': `\n\nالشعبة الحالية: ${context.selectedTrack.label}. القراءة الحالية: ${context.primarySuggestion}`,
+        'tracks': `\n\nالشعبة المختارة الآن: ${context.selectedTrack.label}.`,
+        'accuracy': '\n\nمهم: راجع دائمًا بيانات مكتب التنسيق عند إعلان الحدود النهائية.',
+        'support': `\n\nبريد الدعم الحالي: ${supportEmail}`,
+    };
+
+    return {
+        role: 'assistant',
+        icon: bestMatch.icon,
+        title: bestMatch.title,
+        text: `${bestMatch.answer}${dynamicDetails[bestMatch.id] || ''}`,
+        source: bestMatch.score > 0 ? 'offline-context' : 'best-effort',
+        actionLabel: bestMatch.actionLabel,
+        actionHref: bestMatch.actionHref,
+        external: bestMatch.external,
+    };
+};
+
 const formatPercent = (value) => `${value.toFixed(1)}%`;
 
 const getPredictedCutoff = (college) => {
@@ -166,7 +331,8 @@ export default function ThanaweyaResultPage() {
     const [total, setTotal] = useState('320');
     const [activeTrackId, setActiveTrackId] = useState('science');
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-    const [assistantTopic, setAssistantTopic] = useState('start');
+    const [assistantInput, setAssistantInput] = useState('');
+    const [assistantMessages, setAssistantMessages] = useState(assistantStarterMessages);
 
     const selectedSystem = degreeSystems.find((system) => system.id === degreeSystemId) || degreeSystems[0];
     const selectedTrack = admissionTracks.find((track) => track.id === activeTrackId) || admissionTracks[0];
@@ -268,54 +434,39 @@ export default function ThanaweyaResultPage() {
         return 'الأفضل الآن: وسّع دائرة البدائل، وابدأ مهارة عملية ترفع فرصك.';
     }, [analysisRows, percentage]);
 
-    const assistantReplies = useMemo(() => ({
-        start: {
-            icon: '🤖',
-            title: 'مساعد عبقورا',
-            message: 'أستطيع إرشادك بسرعة: افتح الرابط الرسمي، احسب النسبة، أو افهم تحليل الكليات بدون تخزين بياناتك.',
-            chips: [
-                { key: 'calculator', label: 'كيف أحسب النسبة؟' },
-                { key: 'analysis', label: 'كيف أقرأ التحليل؟' },
-                { key: 'support', label: 'أحتاج تواصل' },
-            ],
-        },
-        calculator: {
-            icon: '🧮',
-            title: 'الحاسبة',
-            message: percentage
-                ? `نسبتك الحالية ${percentage}%. اختر الشعبة من بطاقة التوقع لقراءة أقرب المسارات.`
-                : `اختر ${selectedSystem.label} ثم اكتب مجموع الطالب من ${selectedSystem.total} درجة. الحساب يتم داخل الصفحة فقط.`,
-            chips: [
-                { key: 'analysis', label: 'انتقل للتحليل' },
-                { key: 'support', label: 'أريد مساعدة' },
-            ],
-        },
-        analysis: {
-            icon: '📊',
-            title: 'تحليل الكليات',
-            message: `أنت تشاهد شعبة ${selectedTrack.label}. المؤشر يقارن نتيجتك ببيانات 2024 و2025 الرسمية ويعطي قراءة إرشادية، وليس قبولًا نهائيًا.`,
-            chips: [
-                { key: 'calculator', label: 'أعدل المجموع' },
-                { key: 'support', label: 'تواصل مع الدعم' },
-            ],
-        },
-        support: {
-            icon: '💬',
-            title: 'التواصل والدعم',
-            message: 'لو تحتاج مساعدة بشرية، أرسل لنا وصفًا قصيرًا للمشكلة: الرابط، الحاسبة، أو تحليل الكلية المطلوبة.',
-            chips: [
-                { key: 'start', label: 'رجوع للبداية' },
-                { key: 'calculator', label: 'الحاسبة' },
-            ],
-        },
-    }), [percentage, selectedSystem, selectedTrack]);
-
-    const activeAssistantReply = assistantReplies[assistantTopic] || assistantReplies.start;
     const supportMailHref = `mailto:${supportEmail}?subject=${encodeURIComponent('طلب دعم من صفحة الثانوية العامة')}&body=${encodeURIComponent('مرحبًا عبقورا، أحتاج مساعدة في:')}`;
+    const latestAssistantMessage = [...assistantMessages].reverse().find((message) => message.role === 'assistant') || assistantStarterMessages[0];
+
+    const getAssistantAnswer = (question) => buildOfflineAssistantAnswer(question, {
+        percentage,
+        selectedSystem,
+        selectedTrack,
+        primarySuggestion,
+    });
+
+    const askAssistantQuestion = (question) => {
+        const trimmedQuestion = question.trim();
+        if (!trimmedQuestion) return;
+
+        const answer = getAssistantAnswer(trimmedQuestion);
+        setAssistantMessages((currentMessages) => [
+            ...currentMessages,
+            { role: 'user', text: trimmedQuestion },
+            answer,
+        ].slice(-10));
+        setAssistantInput('');
+    };
 
     const openAssistant = (topic = 'start') => {
-        setAssistantTopic(topic);
         setIsAssistantOpen(true);
+        if (topic !== 'start') {
+            askAssistantQuestion(quickTopicQuestions[topic] || quickTopicQuestions.start);
+        }
+    };
+
+    const handleAssistantSubmit = (event) => {
+        event.preventDefault();
+        askAssistantQuestion(assistantInput);
     };
 
     const handleSystemChange = (systemId) => {
@@ -732,28 +883,59 @@ export default function ThanaweyaResultPage() {
                 {isAssistantOpen ? (
                     <aside className="result-ai-assistant open" id="result-ai-assistant">
                         <div className="result-ai-header">
-                            <span aria-hidden="true">{activeAssistantReply.icon}</span>
+                            <span aria-hidden="true">{latestAssistantMessage.icon}</span>
                             <div>
-                                <strong>{activeAssistantReply.title}</strong>
-                                <small>مساعد إرشادي لخدمات الصفحة</small>
+                                <strong>{latestAssistantMessage.title}</strong>
+                                <small>Offline context agent · بدون API</small>
                             </div>
                             <button type="button" onClick={() => setIsAssistantOpen(false)} aria-label="إغلاق المساعد">×</button>
                         </div>
 
                         <div className="result-ai-body">
-                            <p>{activeAssistantReply.message}</p>
+                            <div className="result-ai-chat-log" aria-live="polite">
+                                {assistantMessages.map((message, index) => (
+                                    <div className={`result-ai-message ${message.role}`} key={`${message.role}-${index}`}>
+                                        {message.role === 'assistant' ? <span aria-hidden="true">{message.icon}</span> : null}
+                                        <div>
+                                            {message.title ? <strong>{message.title}</strong> : null}
+                                            <p>{message.text}</p>
+                                            {message.source ? <small>{message.source === 'offline-context' ? 'من معرفة عبقورا المحلية' : 'إجابة تقريبية'}</small> : null}
+                                            {message.actionHref ? (
+                                                <a
+                                                    href={message.actionHref}
+                                                    target={message.external ? '_blank' : undefined}
+                                                    rel={message.external ? 'noopener noreferrer' : undefined}
+                                                >
+                                                    {message.actionLabel}
+                                                </a>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
                             <div className="result-ai-chips">
-                                {activeAssistantReply.chips.map((chip) => (
-                                    <button key={chip.key} type="button" onClick={() => setAssistantTopic(chip.key)}>
-                                        {chip.label}
+                                {assistantQuickQuestions.map((question) => (
+                                    <button key={question} type="button" onClick={() => askAssistantQuestion(question)}>
+                                        {question}
                                     </button>
                                 ))}
                             </div>
+
+                            <form className="result-ai-form" onSubmit={handleAssistantSubmit}>
+                                <input
+                                    value={assistantInput}
+                                    onChange={(event) => setAssistantInput(event.target.value)}
+                                    placeholder="اسأل عن النتيجة، النسبة، الكليات، عبقورا..."
+                                    aria-label="اكتب سؤالًا لمساعد عبقورا"
+                                />
+                                <button type="submit">إرسال</button>
+                            </form>
                         </div>
 
                         <div className="result-ai-actions">
-                            <a href="#result-calculator" onClick={() => setAssistantTopic('calculator')}>الحاسبة</a>
-                            <a href="#result-analysis" onClick={() => setAssistantTopic('analysis')}>التحليل</a>
+                            <a href="#result-calculator" onClick={() => askAssistantQuestion(quickTopicQuestions.calculator)}>الحاسبة</a>
+                            <a href="#result-analysis" onClick={() => askAssistantQuestion(quickTopicQuestions.analysis)}>التحليل</a>
                             <a href={supportMailHref}>رسالة للدعم</a>
                         </div>
                     </aside>
