@@ -11,6 +11,7 @@ const literaryCutoffs2025Url = 'https://tansik.digital.gov.eg/application/Certif
 const scientificCutoffs2024Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitE2024.htm';
 const literaryCutoffs2024Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitA2024.htm';
 const thanaweyaPageUrl = 'https://3bdoum.github.io/abqora-mvp/thanaweya-result/';
+const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 const aiAgentEndpoint = (process.env.NEXT_PUBLIC_AI_AGENT_ENDPOINT || `${API_BASE_URL.replace(/\/$/, '')}/ai/public-chat`).replace(/\/$/, '');
 const aiSupportEndpoint = `${API_BASE_URL.replace(/\/$/, '')}/ai/support-requests`;
 const analyticsEndpoint = `${API_BASE_URL.replace(/\/$/, '')}/analytics/public-event`;
@@ -272,6 +273,7 @@ export default function ThanaweyaResultPage() {
     const [isSupportSending, setIsSupportSending] = useState(false);
     const [supportStatus, setSupportStatus] = useState('');
     const [hasTrackedCalculator, setHasTrackedCalculator] = useState(false);
+    const [shareStatus, setShareStatus] = useState('');
 
     const selectedSystem = degreeSystems.find((system) => system.id === degreeSystemId) || degreeSystems[0];
     const selectedTrack = admissionTracks.find((track) => track.id === activeTrackId) || admissionTracks[0];
@@ -593,6 +595,27 @@ ${rows}
         trackPublicEvent('official_link_click', target);
     };
 
+    const shareThanaweyaPage = async () => {
+        trackPublicEvent('service_click', 'share_thanaweya_page');
+        const shareData = {
+            title: 'نتيجة الثانوية العامة وحاسبة النسبة | عبقورا',
+            text: 'صفحة آمنة لفتح رابط النتيجة الرسمي، حساب النسبة، وقراءة تحليل إرشادي للكليات.',
+            url: thanaweyaPageUrl,
+        };
+
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+                setShareStatus('تم فتح مشاركة الصفحة ✅');
+                return;
+            }
+            await navigator.clipboard.writeText(thanaweyaPageUrl);
+            setShareStatus('تم نسخ رابط الصفحة ✅');
+        } catch {
+            setShareStatus('انسخ الرابط من شريط المتصفح وشاركه مع من يحتاجه.');
+        }
+    };
+
     return (
         <>
             <Head>
@@ -611,7 +634,9 @@ ${rows}
                 <meta property="og:url" content={thanaweyaPageUrl} />
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta name="keywords" content="نتيجة الثانوية العامة, حاسبة النسبة, تنسيق الكليات, عبقورا, الثانوية العامة 2026" />
+                <meta name="theme-color" content="#4f46e5" />
                 <link rel="canonical" href={thanaweyaPageUrl} />
+                <link rel="manifest" href={`${publicBasePath}/site.webmanifest`} />
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{
@@ -756,6 +781,23 @@ ${rows}
                             <p>{item.description}</p>
                         </article>
                     ))}
+                </section>
+
+                <section className="result-share-card" aria-labelledby="result-share-title">
+                    <div>
+                        <span className="eyebrow">انشرها لمن يحتاجها</span>
+                        <h2 id="result-share-title">شارك صفحة النتيجة الآمنة مع طالب أو ولي أمر</h2>
+                        <p>رابط واحد يجمع المصدر الرسمي، الحاسبة، التحليل، والمساعد — بدون طلب رقم جلوس داخل عبقورا.</p>
+                    </div>
+                    <div className="result-share-actions">
+                        <button type="button" className="button" onClick={shareThanaweyaPage}>
+                            مشاركة الصفحة
+                        </button>
+                        <a href={thanaweyaPageUrl} className="small-button secondary">
+                            فتح الرابط المباشر
+                        </a>
+                        {shareStatus ? <small>{shareStatus}</small> : null}
+                    </div>
                 </section>
 
                 <section className="result-workspace result-core-workspace">

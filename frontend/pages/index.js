@@ -4,6 +4,10 @@ import Link from 'next/link';
 import CourseCard from '../components/CourseCard';
 import API from '../utils/api';
 
+const siteUrl = 'https://3bdoum.github.io/abqora-mvp/';
+const thanaweyaPageUrl = 'https://3bdoum.github.io/abqora-mvp/thanaweya-result/';
+const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 const homeAds = [
     {
         badge: 'عرض تعليمي',
@@ -48,9 +52,31 @@ export default function Home() {
                 name="description"
                 content="عبقورا منصة عربية لتعليم البرمجة للأطفال بخطوات بسيطة: فيديو شرح، تطبيق عملي، ومتابعة آمنة من المعلم وولي الأمر."
             />
+            <meta name="robots" content="index,follow" />
+            <meta name="keywords" content="تعليم البرمجة للأطفال, برمجة بالعربية, كورسات أطفال, Code.org بالعربي, عبقورا" />
             <meta property="og:title" content="عبقورا | تعلم البرمجة للأطفال بالعربية" />
             <meta property="og:description" content="مسارات برمجة عربية للأطفال مع شرح مبسط ومتابعة آمنة." />
             <meta property="og:type" content="website" />
+            <meta property="og:url" content={siteUrl} />
+            <meta property="og:locale" content="ar_EG" />
+            <meta name="twitter:card" content="summary" />
+            <meta name="theme-color" content="#4f46e5" />
+            <link rel="canonical" href={siteUrl} />
+            <link rel="manifest" href={`${publicBasePath}/site.webmanifest`} />
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        '@context': 'https://schema.org',
+                        '@type': 'EducationalOrganization',
+                        name: 'عبقورا',
+                        url: siteUrl,
+                        description: 'منصة عربية لتعليم البرمجة للأطفال بفيديو شرح وتطبيق عملي ومتابعة آمنة من المعلم وولي الأمر.',
+                        sameAs: [thanaweyaPageUrl],
+                        knowsAbout: ['تعليم البرمجة للأطفال', 'التعلم الإلكتروني', 'Code.org', 'الثانوية العامة'],
+                    }),
+                }}
+            />
         </Head>
 
         <main className="page shell rtl home-page">
