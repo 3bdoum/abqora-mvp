@@ -752,26 +752,29 @@ ${rows}
                     </a>
                 </section>
 
-                <section className="result-main-services" aria-label="الخدمات الأساسية">
+                <aside className="result-service-rail" aria-label="الخدمات الأساسية">
+                    <span className="result-service-rail-label">خدمات الصفحة</span>
                     {mainServices.map((service) => (
                         <a
                             key={service.title}
                             href={service.href}
                             target={service.external ? '_blank' : undefined}
                             rel={service.external ? 'noopener noreferrer' : undefined}
-                            className="result-service-card"
+                            className="result-service-rail-item"
                             onClick={() => {
                                 trackPublicEvent('service_click', service.title);
                                 if (service.external) trackPublicEvent('official_link_click', service.title);
                             }}
                         >
-                            <span className="result-service-icon" aria-hidden="true">{service.icon}</span>
-                            <strong>{service.title}</strong>
-                            <p>{service.description}</p>
-                            <small>{service.action}</small>
+                            <span className="result-service-rail-icon" aria-hidden="true">{service.icon}</span>
+                            <span>
+                                <strong>{service.title}</strong>
+                                <small>{service.action}</small>
+                            </span>
+                            <em aria-hidden="true">{service.external ? '↗' : '↓'}</em>
                         </a>
                     ))}
-                </section>
+                </aside>
 
                 <section className="result-trust-strip" aria-label="الثقة والخصوصية">
                     {trustHighlights.map((item) => (
