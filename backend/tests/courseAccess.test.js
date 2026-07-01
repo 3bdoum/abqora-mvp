@@ -22,6 +22,7 @@ const Certificate = require('../models/certificateModel');
 const AiTutorExchange = require('../models/aiTutorExchangeModel');
 const AiPublicConversation = require('../models/aiPublicConversationModel');
 const SupportRequest = require('../models/supportRequestModel');
+const PublicAnalyticsEvent = require('../models/publicAnalyticsEventModel');
 const Advertisement = require('../models/advertisementModel');
 const { backfillLegacyProgress, seedData } = require('../utils/seed');
 
@@ -35,7 +36,8 @@ const clearDatabase = async () => {
         User.deleteMany({}), Course.deleteMany({}), Lesson.deleteMany({}), Progress.deleteMany({}),
         TeacherStudentAssignment.deleteMany({}), ProgressAuditLog.deleteMany({}), Quiz.deleteMany({}),
         Submission.deleteMany({}), Certificate.deleteMany({}), AiTutorExchange.deleteMany({}),
-        AiPublicConversation.deleteMany({}), SupportRequest.deleteMany({}), Advertisement.deleteMany({}),
+        AiPublicConversation.deleteMany({}), SupportRequest.deleteMany({}), PublicAnalyticsEvent.deleteMany({}),
+        Advertisement.deleteMany({}),
     ]);
 };
 
@@ -625,6 +627,63 @@ test('public support handoff creates requests and admin can manage them', async 
     assert.equal(updated.status, 200);
     assert.equal(updated.body.status, 'resolved');
     assert.equal(updated.body.adminNote, 'تمت المتابعة');
+});
+
+test('public analytics events feed admin summary', async () => {
+    const data = await setupScenario();
+
+    const pageView = await request(app)
+        .post('/api/analytics/public-event')
+        .set({ 'x-abqora-session-id': 'analytics-session-unique' })
+        .send({
+            sourcePage: 'thanaweya-result',
+            eventName: 'page_view',
+            target: 'hero',
+        });
+    assert.equal(pageView.status, 202);
+
+    await request(app)
+        .post('/api/analytics/public-event')
+        .set({ 'x-abqora-session-id': 'analytics-session-unique' })
+        .send({
+            sourcePage: 'thanaweya-result',
+            eventName: 'service_click',
+            target: 'حاسبة النسبة',
+            metadata: { percentageBand: '80-90', track: 'science', degreeSystem: 'new' },
+        });
+
+    await AiPublicConversation.create({
+        sourcePage: 'thanaweya-result',
+        userMessage: 'كيف أختار كلية؟',
+        assistantMessage: 'ابدأ بالميول والبدائل.',
+        provider: 'gemini',
+        model: 'gemini-3.1-flash-lite',
+        status: 'answered',
+    });
+    await SupportRequest.create({
+        sourcePage: 'thanaweya-result',
+        message: 'أحتاج مساعدة في الحاسبة',
+        status: 'new',
+    });
+
+    const blocked = await request(app)
+        .get('/api/analytics/admin/summary')
+        .set(auth(data.tokens.teacher));
+    assert.equal(blocked.status, 403);
+
+    const summary = await request(app)
+        .get('/api/analytics/admin/summary?sourcePage=thanaweya-result')
+        .set(auth(data.tokens.admin));
+    assert.equal(summary.status, 200);
+    assert.equal(summary.body.totals.pageViews, 1);
+    assert.equal(summary.body.totals.uniqueVisitors, 1);
+    assert.equal(summary.body.totals.aiQuestions, 1);
+    assert.equal(summary.body.totals.supportRequests, 1);
+    assert.equal(summary.body.totals.supportOpen, 1);
+    assert.deepEqual(summary.body.topServiceClicks[0], {
+        target: 'حاسبة النسبة',
+        count: 1,
+    });
 });
 
 test('AI tutor answers available lessons and stores the exchange', async () => {

@@ -2438,6 +2438,59 @@ input:focus, select:focus, textarea:focus {
     align-items: start;
 }
 
+.analytics-funnel-card {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: 18px;
+    align-items: center;
+}
+
+.analytics-funnel-card h2 {
+    margin: 4px 0 8px;
+}
+
+.analytics-funnel-card p {
+    margin: 0;
+    color: var(--text-muted);
+    font-weight: 750;
+}
+
+.analytics-click-list {
+    display: grid;
+    gap: 10px;
+}
+
+.analytics-click-list > span {
+    color: var(--text-muted);
+    font-weight: 850;
+}
+
+.analytics-click-list div {
+    display: grid;
+    grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+}
+
+.analytics-click-list strong {
+    color: #0f172a;
+    font-size: 0.84rem;
+    font-weight: 950;
+}
+
+.analytics-click-list b {
+    display: block;
+    min-width: 10%;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+.analytics-click-list span {
+    color: var(--primary);
+    font-weight: 950;
+}
+
 .compact-filter {
     min-width: 170px;
     margin: 0;
@@ -4043,6 +4096,48 @@ input:focus, select:focus, textarea:focus {
     color: var(--primary);
     font-size: 0.76rem;
     font-weight: 900;
+}
+
+.result-trust-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0 0 18px;
+}
+
+.result-trust-strip article {
+    display: grid;
+    gap: 7px;
+    padding: 16px;
+    border: 1px solid rgba(16, 185, 129, 0.16);
+    border-radius: 22px;
+    background:
+        radial-gradient(circle at 12% 14%, rgba(16, 185, 129, 0.1), transparent 34%),
+        rgba(255, 255, 255, 0.78);
+    box-shadow: var(--shadow-sm);
+}
+
+.result-trust-strip span {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 16px;
+    background: #ecfdf5;
+    font-size: 1.1rem;
+}
+
+.result-trust-strip strong {
+    color: #0f172a;
+    font-weight: 950;
+}
+
+.result-trust-strip p {
+    margin: 0;
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 750;
+    line-height: 1.7;
 }
 
 .result-core-workspace {
@@ -6909,6 +7004,7 @@ input:focus, select:focus, textarea:focus {
     .result-grid,
     .result-quick-stats,
     .result-main-services,
+    .result-trust-strip,
     .result-game-section,
     .result-analysis-grid,
     .result-featured-video .result-video-card-featured,
@@ -6922,6 +7018,7 @@ input:focus, select:focus, textarea:focus {
     .result-growth-card,
     .ai-support-columns,
     .ai-support-stat-grid,
+    .analytics-funnel-card,
     .ai-review-item,
     .landing-safety-card,
     .parent-dashboard-layout,
@@ -6940,6 +7037,7 @@ input:focus, select:focus, textarea:focus {
     .ai-review-summary,
     .achievement-grid,
     .student-flow-steps,
+    .analytics-click-list div,
     .support-form-grid,
     .readiness-stat-grid {
         grid-template-columns: 1fr;

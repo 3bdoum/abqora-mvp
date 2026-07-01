@@ -109,6 +109,7 @@ export default function AdminDashboard() {
     const [supportStatusFilter, setSupportStatusFilter] = useState('all');
     const [aiAdminNotes, setAiAdminNotes] = useState({});
     const [supportAdminNotes, setSupportAdminNotes] = useState({});
+    const [analyticsSummary, setAnalyticsSummary] = useState(null);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -198,16 +199,18 @@ export default function AdminDashboard() {
 
     const fetchData = async () => {
         try {
-            const [subRes, adsRes, aiRes, supportRes] = await Promise.all([
+            const [subRes, adsRes, aiRes, supportRes, analyticsRes] = await Promise.all([
                 API.get('/submissions'),
                 API.get('/ads').catch(() => ({ data: [] })),
                 API.get('/ai/public-conversations?limit=30').catch(() => ({ data: [] })),
                 API.get('/ai/support-requests?limit=30').catch(() => ({ data: [] })),
+                API.get('/analytics/admin/summary?sourcePage=thanaweya-result').catch(() => ({ data: null })),
             ]);
             setSubmissions(subRes.data);
             setAds(adsRes.data || []);
             setAiConversations(aiRes.data || []);
             setSupportRequests(supportRes.data || []);
+            setAnalyticsSummary(analyticsRes.data || null);
 
             const coursesRes = await API.get('/courses');
             setCourses(coursesRes.data);
@@ -310,12 +313,14 @@ export default function AdminDashboard() {
 
     const refreshAiSupportPanel = async () => {
         try {
-            const [aiRes, supportRes] = await Promise.all([
+            const [aiRes, supportRes, analyticsRes] = await Promise.all([
                 API.get('/ai/public-conversations?limit=30'),
                 API.get('/ai/support-requests?limit=30'),
+                API.get('/analytics/admin/summary?sourcePage=thanaweya-result'),
             ]);
             setAiConversations(aiRes.data || []);
             setSupportRequests(supportRes.data || []);
+            setAnalyticsSummary(analyticsRes.data || null);
         } catch (err) {
             setMessage('تعذر تحديث بيانات المساعد والدعم');
         }
@@ -549,6 +554,10 @@ export default function AdminDashboard() {
         needsImprovement: aiConversations.filter((item) => item.reviewStatus === 'needs_improvement' || item.status === 'error').length,
         supportNew: supportRequests.filter((item) => item.status === 'new').length,
         supportOpen: supportRequests.filter((item) => ['new', 'in_progress'].includes(item.status)).length,
+        pageViews: analyticsSummary?.totals?.pageViews || 0,
+        uniqueVisitors: analyticsSummary?.totals?.uniqueVisitors || 0,
+        officialClicks: analyticsSummary?.totals?.officialClicks || 0,
+        calculatorUses: analyticsSummary?.totals?.calculatorUses || 0,
     };
     const getSupportStatusLabel = (status) => ({
         new: 'جديد',
@@ -868,6 +877,26 @@ export default function AdminDashboard() {
 
                         <div className="ai-support-stat-grid">
                             <div className="card">
+                                <span>👀</span>
+                                <strong>{aiSupportStats.pageViews}</strong>
+                                <p>زيارات صفحة الثانوية</p>
+                            </div>
+                            <div className="card">
+                                <span>🧑‍🤝‍🧑</span>
+                                <strong>{aiSupportStats.uniqueVisitors}</strong>
+                                <p>زوار تقريبيون</p>
+                            </div>
+                            <div className="card">
+                                <span>🔗</span>
+                                <strong>{aiSupportStats.officialClicks}</strong>
+                                <p>ضغطات روابط رسمية</p>
+                            </div>
+                            <div className="card">
+                                <span>🧮</span>
+                                <strong>{aiSupportStats.calculatorUses}</strong>
+                                <p>استخدامات الحاسبة</p>
+                            </div>
+                            <div className="card">
                                 <span>💬</span>
                                 <strong>{aiSupportStats.conversations}</strong>
                                 <p>محادثات عامة محفوظة</p>
@@ -886,6 +915,25 @@ export default function AdminDashboard() {
                                 <span>🟢</span>
                                 <strong>{aiSupportStats.supportOpen}</strong>
                                 <p>طلبات مفتوحة</p>
+                            </div>
+                        </div>
+
+                        <div className="card analytics-funnel-card">
+                            <div>
+                                <span className="eyebrow">تحويلات الصفحة</span>
+                                <h2>أكثر الخدمات ضغطاً</h2>
+                                <p>أرقام آخر {analyticsSummary?.days || 7} أيام تساعدك تعرف أين يذهب اهتمام الزوار.</p>
+                            </div>
+                            <div className="analytics-click-list">
+                                {(analyticsSummary?.topServiceClicks || []).length === 0 ? (
+                                    <span>لا توجد ضغطات خدمات كافية بعد.</span>
+                                ) : analyticsSummary.topServiceClicks.map((item) => (
+                                    <div key={item.target}>
+                                        <strong>{item.target}</strong>
+                                        <b style={{ width: `${Math.min(100, item.count * 18)}%` }} />
+                                        <span>{item.count}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 

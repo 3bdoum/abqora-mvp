@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { API_BASE_URL } from '../utils/api';
@@ -10,9 +10,11 @@ const scientificCutoffs2025Url = 'https://tansik.digital.gov.eg/application/Cert
 const literaryCutoffs2025Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitA2025.htm';
 const scientificCutoffs2024Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitE2024.htm';
 const literaryCutoffs2024Url = 'https://tansik.digital.gov.eg/application/Certificates/Thanwy/Limits/LimitA2024.htm';
-const supportEmail = 'support@abqora.com';
+const thanaweyaPageUrl = 'https://3bdoum.github.io/abqora-mvp/thanaweya-result/';
 const aiAgentEndpoint = (process.env.NEXT_PUBLIC_AI_AGENT_ENDPOINT || `${API_BASE_URL.replace(/\/$/, '')}/ai/public-chat`).replace(/\/$/, '');
 const aiSupportEndpoint = `${API_BASE_URL.replace(/\/$/, '')}/ai/support-requests`;
+const analyticsEndpoint = `${API_BASE_URL.replace(/\/$/, '')}/analytics/public-event`;
+const supportWhatsappUrl = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_URL || '';
 
 const degreeSystems = [
     {
@@ -70,6 +72,29 @@ const mainServices = [
         description: 'اسأل عن الرابط، الحاسبة، أو قراءة التحليل بخطوات قصيرة.',
         href: '#result-support',
         action: 'احصل على مساعدة',
+    },
+];
+
+const trustHighlights = [
+    {
+        icon: '🛡️',
+        title: 'لا نخزن رقم الجلوس',
+        description: 'عبقورا لا يطلب رقم الجلوس ولا يعرض النتيجة الرسمية.',
+    },
+    {
+        icon: '🔗',
+        title: 'المصدر الرسمي أولاً',
+        description: 'زر النتيجة يفتح موقع الوزارة مباشرة في نافذة آمنة.',
+    },
+    {
+        icon: '🧮',
+        title: 'الحساب داخل الصفحة',
+        description: 'النسبة تحسب فورياً في المتصفح بدون حفظ بيانات الطالب.',
+    },
+    {
+        icon: '📊',
+        title: 'توقعات إرشادية',
+        description: 'التحليل يساعدك تفهم المسارات، وليس قرار قبول رسمي.',
     },
 ];
 
@@ -150,6 +175,16 @@ const getMessageHistoryForAi = (messages) => messages
         text: message.text,
     }));
 
+const getPercentageBand = (value) => {
+    if (!value) return '';
+    if (value >= 95) return '95+';
+    if (value >= 90) return '90-95';
+    if (value >= 80) return '80-90';
+    if (value >= 70) return '70-80';
+    if (value >= 60) return '60-70';
+    return 'below-60';
+};
+
 const getAssistantSessionId = () => {
     if (typeof window === 'undefined') return '';
     const storageKey = 'abqora-public-ai-session';
@@ -158,6 +193,23 @@ const getAssistantSessionId = () => {
     const next = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
     window.localStorage.setItem(storageKey, next);
     return next;
+};
+
+const trackPublicEvent = (eventName, target = '', metadata = {}) => {
+    if (typeof window === 'undefined') return;
+    fetch(analyticsEndpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-abqora-session-id': getAssistantSessionId(),
+        },
+        body: JSON.stringify({
+            sourcePage: 'thanaweya-result',
+            eventName,
+            target,
+            metadata,
+        }),
+    }).catch(() => {});
 };
 
 const formatPercent = (value) => `${value.toFixed(1)}%`;
@@ -219,6 +271,7 @@ export default function ThanaweyaResultPage() {
     const [supportForm, setSupportForm] = useState({ name: '', email: '', message: '' });
     const [isSupportSending, setIsSupportSending] = useState(false);
     const [supportStatus, setSupportStatus] = useState('');
+    const [hasTrackedCalculator, setHasTrackedCalculator] = useState(false);
 
     const selectedSystem = degreeSystems.find((system) => system.id === degreeSystemId) || degreeSystems[0];
     const selectedTrack = admissionTracks.find((track) => track.id === activeTrackId) || admissionTracks[0];
@@ -231,6 +284,20 @@ export default function ThanaweyaResultPage() {
         }
         return Number(((numericScore / numericTotal) * 100).toFixed(2));
     }, [score, total]);
+
+    useEffect(() => {
+        trackPublicEvent('page_view', 'thanaweya-result');
+    }, []);
+
+    useEffect(() => {
+        if (!percentage || hasTrackedCalculator) return;
+        trackPublicEvent('calculator_used', 'percentage_calculator', {
+            percentageBand: getPercentageBand(percentage),
+            degreeSystem: degreeSystemId,
+            track: activeTrackId,
+        });
+        setHasTrackedCalculator(true);
+    }, [activeTrackId, degreeSystemId, hasTrackedCalculator, percentage]);
 
     const estimate = useMemo(() => {
         if (!percentage) {
@@ -337,7 +404,6 @@ ${rows}
 `.trim();
     }, [analysisRows, percentage, primarySuggestion, score, selectedSystem, selectedTrack]);
 
-    const supportMailHref = `mailto:${supportEmail}?subject=${encodeURIComponent('طلب دعم من صفحة الثانوية العامة')}&body=${encodeURIComponent('مرحبًا عبقورا، أحتاج مساعدة في:')}`;
     const latestAssistantMessage = [...assistantMessages].reverse().find((message) => message.role === 'assistant') || assistantStarterMessages[0];
 
     const askAssistantQuestion = async (question) => {
@@ -425,6 +491,7 @@ ${rows}
     };
 
     const openAssistant = (topic = 'start') => {
+        trackPublicEvent('ai_open', topic);
         setIsAssistantOpen(true);
         if (topic !== 'start') {
             askAssistantQuestion(quickTopicQuestions[topic] || quickTopicQuestions.start);
@@ -443,6 +510,8 @@ ${rows}
     };
 
     const openSupportForm = () => {
+        trackPublicEvent('support_cta_click', 'assistant_support_form');
+        setIsAssistantOpen(true);
         const lastUserMessage = [...assistantMessages].reverse().find((message) => message.role === 'user');
         setSupportForm((current) => ({
             ...current,
@@ -486,6 +555,7 @@ ${rows}
             }
 
             setSupportStatus('تم إرسال طلب الدعم بنجاح ✅');
+            trackPublicEvent('support_request_sent', 'assistant_support_form');
             setSupportForm({ name: '', email: '', message: '' });
             setAssistantMessages((currentMessages) => [
                 ...currentMessages,
@@ -510,6 +580,19 @@ ${rows}
         setTotal(String(nextSystem.total));
     };
 
+    const handleTrackChange = (trackId) => {
+        setActiveTrackId(trackId);
+        trackPublicEvent('analysis_track_selected', trackId, {
+            percentageBand: getPercentageBand(percentage),
+            degreeSystem: degreeSystemId,
+            track: trackId,
+        });
+    };
+
+    const trackOfficialClick = (target) => {
+        trackPublicEvent('official_link_click', target);
+    };
+
     return (
         <>
             <Head>
@@ -525,18 +608,38 @@ ${rows}
                     content="حاسبة آمنة وتحليل إرشادي جذاب يساعد الطالب يختار خطواته بعد النتيجة."
                 />
                 <meta property="og:type" content="website" />
+                <meta property="og:url" content={thanaweyaPageUrl} />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="keywords" content="نتيجة الثانوية العامة, حاسبة النسبة, تنسيق الكليات, عبقورا, الثانوية العامة 2026" />
+                <link rel="canonical" href={thanaweyaPageUrl} />
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{
+                        __html: JSON.stringify({
+                            '@context': 'https://schema.org',
+                            '@type': 'WebApplication',
+                            name: 'عبقورا - نتيجة الثانوية العامة وحاسبة التنسيق',
+                            url: thanaweyaPageUrl,
+                            applicationCategory: 'EducationalApplication',
+                            operatingSystem: 'Web',
+                            inLanguage: 'ar-EG',
+                            description: 'صفحة عربية آمنة لفتح رابط نتيجة الثانوية العامة الرسمي، حساب النسبة، وقراءة تحليل إرشادي للكليات.',
+                            offers: { '@type': 'Offer', price: '0', priceCurrency: 'EGP' },
+                        }),
+                    }}
+                />
             </Head>
 
             <main className="page shell rtl public-result-page result-dynamic-page">
                 <nav className="result-floating-header result-floating-header-simple" aria-label="تنقل سريع داخل صفحة النتيجة">
                     <Link href="/" className="result-floating-brand">عبقورا</Link>
                     <div className="result-floating-links">
-                        <a href={officialResultUrl} target="_blank" rel="noopener noreferrer">الرابط الرسمي</a>
-                        <a href="#result-calculator">الحاسبة</a>
-                        <a href="#result-analysis">تحليل الكليات</a>
-                        <a href="#result-support">الدعم</a>
+                        <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" onClick={() => trackOfficialClick('header_official_link')}>الرابط الرسمي</a>
+                        <a href="#result-calculator" onClick={() => trackPublicEvent('service_click', 'header_calculator')}>الحاسبة</a>
+                        <a href="#result-analysis" onClick={() => trackPublicEvent('service_click', 'header_analysis')}>تحليل الكليات</a>
+                        <a href="#result-support" onClick={() => trackPublicEvent('support_cta_click', 'header_support')}>الدعم</a>
                     </div>
-                    <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="small-button">
+                    <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="small-button" onClick={() => trackOfficialClick('header_start_button')}>
                         ابدأ الآن
                     </a>
                 </nav>
@@ -556,10 +659,10 @@ ${rows}
                         </p>
 
                         <div className="hero-actions result-simple-actions">
-                            <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="button">
+                            <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="button" onClick={() => trackOfficialClick('hero_official_button')}>
                                 افتح الرابط الرسمي
                             </a>
-                            <a href="#result-calculator" className="small-button">
+                            <a href="#result-calculator" className="small-button" onClick={() => trackPublicEvent('service_click', 'hero_calculator_button')}>
                                 احسب وتوقع الآن
                             </a>
                         </div>
@@ -613,12 +716,12 @@ ${rows}
                             <strong>اقتراح مبدئي</strong>
                             <p>{primarySuggestion}</p>
                         </div>
-                        <a href="#result-analysis" className="button">
+                        <a href="#result-analysis" className="button" onClick={() => trackPublicEvent('service_click', 'hero_analysis_button')}>
                             شاهد التحليل
                         </a>
                     </aside>
 
-                    <a href="#result-calculator" className="result-scroll-cue" aria-label="انتقل إلى الحاسبة">
+                    <a href="#result-calculator" className="result-scroll-cue" aria-label="انتقل إلى الحاسبة" onClick={() => trackPublicEvent('service_click', 'scroll_cue_calculator')}>
                         <span>ابدأ هنا</span>
                         <b aria-hidden="true">↓</b>
                     </a>
@@ -632,12 +735,26 @@ ${rows}
                             target={service.external ? '_blank' : undefined}
                             rel={service.external ? 'noopener noreferrer' : undefined}
                             className="result-service-card"
+                            onClick={() => {
+                                trackPublicEvent('service_click', service.title);
+                                if (service.external) trackPublicEvent('official_link_click', service.title);
+                            }}
                         >
                             <span className="result-service-icon" aria-hidden="true">{service.icon}</span>
                             <strong>{service.title}</strong>
                             <p>{service.description}</p>
                             <small>{service.action}</small>
                         </a>
+                    ))}
+                </section>
+
+                <section className="result-trust-strip" aria-label="الثقة والخصوصية">
+                    {trustHighlights.map((item) => (
+                        <article key={item.title}>
+                            <span aria-hidden="true">{item.icon}</span>
+                            <strong>{item.title}</strong>
+                            <p>{item.description}</p>
+                        </article>
                     ))}
                 </section>
 
@@ -728,7 +845,7 @@ ${rows}
                                     key={track.id}
                                     type="button"
                                     className={track.id === activeTrackId ? 'active' : ''}
-                                    onClick={() => setActiveTrackId(track.id)}
+                                    onClick={() => handleTrackChange(track.id)}
                                 >
                                     {track.label}
                                 </button>
@@ -742,7 +859,9 @@ ${rows}
                             <strong>{primarySuggestion}</strong>
                         </div>
 
-                        <a href="#result-analysis" className="small-button">افتح الرسوم والتحليل</a>
+                        <a href="#result-analysis" className="small-button" onClick={() => trackPublicEvent('service_click', 'prediction_summary_analysis')}>
+                            افتح الرسوم والتحليل
+                        </a>
                     </article>
                 </section>
 
@@ -758,9 +877,9 @@ ${rows}
                     </div>
 
                     <div className="result-source-links" aria-label="مصادر بيانات التنسيق">
-                        <a href={selectedTrack.source2025} target="_blank" rel="noopener noreferrer">مصدر 2025 الرسمي</a>
-                        <a href={selectedTrack.source2024} target="_blank" rel="noopener noreferrer">مصدر 2024 الرسمي</a>
-                        <a href={tansikUrl} target="_blank" rel="noopener noreferrer">بوابة التنسيق</a>
+                        <a href={selectedTrack.source2025} target="_blank" rel="noopener noreferrer" onClick={() => trackOfficialClick('source_2025')}>مصدر 2025 الرسمي</a>
+                        <a href={selectedTrack.source2024} target="_blank" rel="noopener noreferrer" onClick={() => trackOfficialClick('source_2024')}>مصدر 2024 الرسمي</a>
+                        <a href={tansikUrl} target="_blank" rel="noopener noreferrer" onClick={() => trackOfficialClick('tansik_portal')}>بوابة التنسيق</a>
                     </div>
 
                     <div className="result-analysis-grid">
@@ -835,11 +954,18 @@ ${rows}
                             <strong>فهم تحليل الكليات</strong>
                             <small>قراءة الرسم والمقارنة</small>
                         </button>
-                        <a href={supportMailHref}>
+                        <button type="button" onClick={openSupportForm}>
                             <span>📩</span>
                             <strong>راسل الدعم</strong>
-                            <small>{supportEmail}</small>
-                        </a>
+                            <small>يرسل طلبًا للوحة الإدارة</small>
+                        </button>
+                        {supportWhatsappUrl ? (
+                            <a href={supportWhatsappUrl} target="_blank" rel="noopener noreferrer" onClick={() => trackPublicEvent('support_cta_click', 'whatsapp')}>
+                                <span>💬</span>
+                                <strong>واتساب</strong>
+                                <small>تواصل سريع عند التفعيل</small>
+                            </a>
+                        ) : null}
                     </div>
                 </section>
 
@@ -881,10 +1007,10 @@ ${rows}
                         </p>
                     </div>
                     <div className="result-action-buttons">
-                        <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="button">
+                        <a href={officialResultUrl} target="_blank" rel="noopener noreferrer" className="button" onClick={() => trackOfficialClick('official_sources_strip')}>
                             رابط النتيجة الرسمي
                         </a>
-                        <a href={tansikUrl} target="_blank" rel="noopener noreferrer" className="small-button">
+                        <a href={tansikUrl} target="_blank" rel="noopener noreferrer" className="small-button" onClick={() => trackOfficialClick('tansik_sources_strip')}>
                             موقع التنسيق
                         </a>
                     </div>
@@ -899,8 +1025,12 @@ ${rows}
                         </p>
                     </div>
                     <div className="result-action-buttons">
-                        <Link href="/" className="button">تعرف على عبقورا</Link>
-                        <a href={ministryUrl} target="_blank" rel="noopener noreferrer" className="small-button">وزارة التربية والتعليم</a>
+                        <Link href="/" className="button" onClick={() => trackPublicEvent('service_click', 'learn_about_abqora')}>
+                            تعرف على عبقورا
+                        </Link>
+                        <a href={ministryUrl} target="_blank" rel="noopener noreferrer" className="small-button" onClick={() => trackOfficialClick('ministry_growth_card')}>
+                            وزارة التربية والتعليم
+                        </a>
                     </div>
                 </section>
 

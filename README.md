@@ -101,6 +101,7 @@ GEMINI_API_KEY=<your Google AI Studio API key>
 GEMINI_MODEL=gemini-3.1-flash-lite
 PUBLIC_AI_RATE_LIMIT_MAX=8
 SUPPORT_RATE_LIMIT_MAX=4
+PUBLIC_ANALYTICS_RATE_LIMIT_MAX=80
 ```
 
 After deploying backend code, run `npm run migrate:courses` once from the Render Shell to update course and lesson records without creating demo users. Run the seed script only for demo/test databases, and never after real users exist. In production it is blocked unless `ALLOW_PRODUCTION_SEED=true` is set intentionally.
@@ -249,6 +250,9 @@ Production safety controls:
 - `SUPPORT_RATE_LIMIT_WINDOW_MS` controls the support handoff window; default is `600000`.
 - Public AI conversations are logged with a hashed session/IP reference, provider/model, status, and admin review status.
 - Public users can send a support request from the assistant popup. Admins review support tickets and AI answer quality from **Admin > المساعد والدعم**.
+- Public service analytics track lightweight events such as page views, official-link clicks, calculator usage, AI opens, and support CTA clicks. They store hashed session/IP references only, not raw IPs, student scores, seat numbers, or personal result data.
+- `PUBLIC_ANALYTICS_RATE_LIMIT_MAX` controls public analytics events per session/IP window; default is `80`.
+- `PUBLIC_ANALYTICS_RATE_LIMIT_WINDOW_MS` controls the analytics rate-limit window; default is `600000`.
 
 ## Roles and sample accounts
 
